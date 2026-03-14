@@ -96,15 +96,19 @@ export function WorkbenchTTSExample() {
 
 export function OrderCompleteTTSExample() {
   const { speak } = useTTS()
+  void speak // 示例函数使用
 
-  // 示例：在订单完成时播放语音
-  async function handleOrderComplete(orderNo: string, tableCode?: string) {
+  // 示例：在订单完成时播放语音（仅供演示）
+  // 实际使用时：
+  /*
+  const handleOrderComplete = async (orderNo: string, tableCode?: string) => {
     if (tableCode) {
       await speak(`桌号 ${tableCode} 的订单已完成`)
     } else {
       await speak(`订单 ${orderNo} 已完成`)
     }
   }
+  */
 
   return null
 }
