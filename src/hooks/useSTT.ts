@@ -83,7 +83,7 @@ export function useSTT(defaultOptions?: STTOptions): UseSTTReturn {
       setTranscript('')
 
       return new Promise((resolve, reject) => {
-        let timeoutId: NodeJS.Timeout | null = null
+        let timeoutId: ReturnType<typeof setTimeout> | null = null
         let isResolved = false
 
         try {

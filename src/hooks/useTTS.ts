@@ -33,8 +33,6 @@ export function useTTS(defaultOptions?: TTSOptions): UseTTSReturn {
   const [chineseVoice, setChineseVoice] = useState<SpeechSynthesisVoice | null>(null)
   const [isSupported, setIsSupported] = useState(false)
 
-  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
-
   // 初始化：检查支持并加载语音列表
   useEffect(() => {
     const checkSupport = async () => {

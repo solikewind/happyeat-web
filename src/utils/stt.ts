@@ -3,6 +3,17 @@
  * 使用浏览器原生的 Web Speech API
  */
 
+// Web Speech API 类型定义
+interface SpeechRecognitionEvent extends Event {
+  readonly resultIndex: number
+  readonly results: SpeechRecognitionResultList
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string
+  readonly message: string
+}
+
 export interface STTOptions {
   /** 语言代码，如 'zh-CN', 'en-US' */
   lang?: string
@@ -71,7 +82,7 @@ export function recognize(
   recognition.interimResults = options.interimResults ?? false
   recognition.maxAlternatives = 1
 
-  let timeoutId: NodeJS.Timeout | null = null
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
   const maxDuration = options.maxDuration || 60000
 
   recognition.onresult = (event: SpeechRecognitionEvent) => {
