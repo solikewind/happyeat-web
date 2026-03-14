@@ -1,0 +1,14 @@
+---
+description: UI 改动后同步更新总结文档
+alwaysApply: true
+---
+
+# UI Summary Update
+
+- 当本项目发生 UI、页面布局、交互、样式相关改动时，结束前同步更新根目录的 `UI_UPDATE_SUMMARY.md`。
+- 追加内容要尽量精简，只记录：
+  - 本次改动范围
+  - 关键页面或文件
+  - 验证结论
+- 如果只是很小的 UI 微调，也要至少补一句简短记录。
+- 不要把 `UI_UPDATE_SUMMARY.md` 写成长日志，优先保持可快速浏览。

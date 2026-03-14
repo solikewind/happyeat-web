@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react'
-import { Tabs, Card, Button, Radio, Form, message, Empty, Space, Popover } from 'antd'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Alert, Button, Card, Empty, Form, Popover, Radio, Space, Statistic, Tabs, Tag, Typography, message } from 'antd'
 import { PlusOutlined, MinusOutlined, AudioOutlined, SoundOutlined } from '@ant-design/icons'
 import type { Menu, MenuCategory, MenuSpec, Table as TableType } from '../api/types'
 import { listMenuCategories, listMenus } from '../api/menu'
@@ -46,7 +46,7 @@ export default function OrderDesk() {
   })
   const { speak, isSupported: ttsSupported } = useTTS({ lang: 'zh-CN', rate: 1.2 })
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       const res = await listMenuCategories({ current: 1, pageSize: 100 })
       setCategories(Array.isArray(res?.categories) ? res.categories : [])
@@ -54,9 +54,9 @@ export default function OrderDesk() {
       message.error('加载分类失败')
       setCategories([])
     }
-  }
+  }, [])
 
-  const loadMenus = async () => {
+  const loadMenus = useCallback(async () => {
     setLoading(true)
     try {
       const res = await listMenus({
@@ -71,9 +71,9 @@ export default function OrderDesk() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeCategory])
 
-  const loadTables = async () => {
+  const loadTables = useCallback(async () => {
     setTablesLoading(true)
     try {
       const res = await listTables({ current: 1, pageSize: 500 })
@@ -84,25 +84,28 @@ export default function OrderDesk() {
     } finally {
       setTablesLoading(false)
     }
-  }
+  }, [])
+
+  const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart])
+  const selectedTable = useMemo(() => tables.find((item) => item.id === tableId), [tableId, tables])
 
   useEffect(() => {
     loadCategories()
     loadTables() /* 进入点餐页即拉取桌号，默认堂食需要 */
-  }, [])
+  }, [loadCategories, loadTables])
 
   useEffect(() => {
     loadMenus()
-  }, [activeCategory])
+  }, [loadMenus])
 
   /** 选堂食时拉取桌号列表，确保有选项 */
   useEffect(() => {
     if (orderType === 'dine_in') {
       loadTables()
     }
-  }, [orderType])
+  }, [orderType, loadTables])
 
-  const getSelection = (menu: Menu) => {
+  const getSelection = useCallback((menu: Menu) => {
     const raw = cardSelections[menu.id]
     const defaults = menu.specs?.length ? defaultSpecs(menu.specs) : []
     const byType = new Map(defaults.map((s) => [s.spec_type, s]))
@@ -110,7 +113,7 @@ export default function OrderDesk() {
     const selectedSpecs = Array.from(byType.values())
     const quantity = raw?.quantity ?? 1
     return { quantity, selectedSpecs }
-  }
+  }, [cardSelections])
 
   const setMenuQuantity = (menu: Menu, quantity: number) => {
     setCardSelections((prev) => ({
@@ -197,7 +200,7 @@ export default function OrderDesk() {
         speak(`抱歉，未找到${menuName}`)
       }
     }
-  }, [transcript, listening, menus, ttsSupported, speak])
+  }, [transcript, listening, menus, ttsSupported, speak, getSelection, setCart])
 
   // 播报菜单信息
   const speakMenuInfo = (menu: Menu) => {
@@ -211,6 +214,10 @@ export default function OrderDesk() {
   const handleSubmit = async () => {
     if (cart.length === 0) {
       message.warning('请先添加菜品')
+      return
+    }
+    if (orderType === 'dine_in' && !tableId) {
+      message.warning('堂食订单请选择桌号')
       return
     }
     setSubmitting(true)
@@ -241,150 +248,23 @@ export default function OrderDesk() {
   ]
 
   return (
-    <div style={{ display: 'flex', gap: 16, height: 'calc(100vh - 120px)', minHeight: 400 }}>
-      {/* 左侧：购物车固定展开 */}
-      <div
-        style={{
-          width: 320,
-          flexShrink: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          background: '#fafafa',
-          borderRadius: 8,
-          border: '1px solid #f0f0f0',
-          overflow: 'hidden',
-        }}
-      >
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', fontWeight: 600 }}>
-          购物车
-        </div>
-        <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
-          {cart.length === 0 ? (
-            <Empty description="暂无菜品" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {cart.map((item, idx) => (
-                <div
-                  key={`${item.menuId}-${item.specInfo ?? ''}-${idx}`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: 10,
-                    background: '#fff',
-                    borderRadius: 8,
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-                  }}
-                >
-                  <div style={{ width: 56, height: 56, flexShrink: 0, borderRadius: 8, overflow: 'hidden', background: '#f5f5f5' }}>
-                    {item.image ? (
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none'
-                        }}
-                      />
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', fontSize: 10 }}>
-                        无图
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 500 }}>{item.name}</div>
-                    {item.specInfo ? (
-                      <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{item.specInfo}</div>
-                    ) : null}
-                    <div style={{ color: '#f5222d', fontSize: 13, marginTop: 2 }}>¥{item.price.toFixed(2)}</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<MinusOutlined />}
-                      onClick={() => updateCartQty(item.menuId, item.specInfo, -1)}
-                    />
-                    <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 500 }}>{item.quantity}</span>
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<PlusOutlined />}
-                      onClick={() => updateCartQty(item.menuId, item.specInfo, 1)}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div style={{ padding: 16, borderTop: '1px solid #f0f0f0' }}>
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>
-            合计：¥{cartTotal.toFixed(2)}
+    <div className="order-desk-layout">
+      <div className="order-desk-main">
+        <div className="page-toolbar">
+          <div>
+            <Typography.Title level={4} className="page-section-title">
+              点餐台
+            </Typography.Title>
+            <Typography.Text className="page-section-subtitle">
+              选择分类后快速点单，规格、数量和语音识别都会实时同步到右侧订单结算区。
+            </Typography.Text>
           </div>
-          <Form layout="vertical" style={{ marginBottom: 12 }}>
-            <Form.Item label="就餐方式" style={{ marginBottom: 8 }}>
-              <Radio.Group
-                value={orderType}
-                onChange={(e) => setOrderType(e.target.value)}
-                optionType="button"
-                options={ORDER_TYPE_OPTIONS}
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-            {orderType === 'dine_in' && (
-              <Form.Item label="桌号" style={{ marginBottom: 8 }}>
-                {tablesLoading ? (
-                  <span style={{ color: '#888', fontSize: 12 }}>加载桌号中…</span>
-                ) : tables.length === 0 ? (
-                  <span style={{ color: '#888', fontSize: 12 }}>暂无餐桌，请先在「餐桌管理」添加</span>
-                ) : (
-                  <Radio.Group
-                    value={tableId}
-                    onChange={(e) => setTableId(e.target.value)}
-                    optionType="button"
-                    style={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: 8 }}
-                    options={tables.map((t) => ({ label: `${t.code}（${t.capacity}人）`, value: t.id }))}
-                  />
-                )}
-              </Form.Item>
-            )}
-          </Form>
-          <Button
-            type="primary"
-            block
-            size="large"
-            onClick={handleSubmit}
-            loading={submitting}
-            disabled={cart.length === 0}
-          >
-            提交订单
-          </Button>
-        </div>
-      </div>
-
-      {/* 右侧：分类 + 菜品 */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <Tabs
-            activeKey={activeCategory}
-            onChange={setActiveCategory}
-            items={tabItems}
-            style={{ flex: 1 }}
-          />
           {sttSupported && (
             <Space>
               {listening ? (
                 <Popover content={`正在识别：${transcript || '请说话...'}`} trigger="click">
-                  <Button
-                    type="primary"
-                    danger
-                    icon={<AudioOutlined />}
-                    onClick={stopSTT}
-                    style={{ borderRadius: '50%', width: 48, height: 48 }}
-                  >
-                    停止
+                  <Button type="primary" danger icon={<AudioOutlined />} onClick={stopSTT}>
+                    停止识别
                   </Button>
                 </Popover>
               ) : (
@@ -393,123 +273,150 @@ export default function OrderDesk() {
                     <div>
                       <p>点击开始语音点菜</p>
                       <p style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-                        可以说："来两份宫保鸡丁"、"要一个红烧肉" 等
+                        可以说："来两份宫保鸡丁"、"要一个红烧肉"
                       </p>
                     </div>
                   }
                   trigger="hover"
                 >
-                  <Button
-                    type="primary"
-                    icon={<AudioOutlined />}
-                    onClick={startSTT}
-                    style={{ borderRadius: '50%', width: 48, height: 48 }}
-                  >
-                    语音
+                  <Button type="primary" icon={<AudioOutlined />} onClick={startSTT}>
+                    语音点餐
                   </Button>
                 </Popover>
               )}
             </Space>
           )}
         </div>
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          {menus.length === 0 && !loading ? (
+
+        <Card className="order-desk-filter-card">
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Space wrap size={[12, 12]}>
+              <Tag color="blue">分类 {categories.length}</Tag>
+              <Tag color="purple">菜品 {menus.length}</Tag>
+              <Tag color="gold">已选 {cartItemCount}</Tag>
+            </Space>
+            <Tabs
+              className="order-desk-tabs"
+              activeKey={activeCategory}
+              onChange={setActiveCategory}
+              items={tabItems}
+            />
+            {sttSupported && (
+              <Alert
+                className="order-desk-status"
+                type={listening ? 'success' : 'info'}
+                showIcon
+                message={listening ? '语音识别中' : '语音点餐可用'}
+                description={listening ? transcript || '请继续说出菜品和数量' : '点击右上角按钮后，可直接说出菜名和份数。'}
+              />
+            )}
+          </Space>
+        </Card>
+
+        {menus.length === 0 && !loading ? (
+          <Card className="order-desk-filter-card" style={{ marginTop: 18 }}>
             <Empty description="暂无菜品" />
-          ) : (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                gap: 16,
-              }}
-            >
-              {menus.map((menu) => {
-                const { quantity, selectedSpecs } = getSelection(menu)
-                const unitPrice = menu.price + selectedSpecs.reduce((sum, s) => sum + (s.price_delta ?? 0), 0)
-                const specsByType = new Map<string, MenuSpec[]>()
-                for (const s of menu.specs ?? []) {
-                  if (!specsByType.has(s.spec_type)) specsByType.set(s.spec_type, [])
-                  specsByType.get(s.spec_type)!.push(s)
-                }
-                return (
-                  <Card
-                    key={menu.id}
-                    hoverable
-                    style={{ borderRadius: 12, overflow: 'hidden' }}
-                    styles={{ body: { padding: 12 } }}
-                    cover={
-                      menu.image ? (
+          </Card>
+        ) : (
+          <div className="order-desk-grid">
+            {menus.map((menu) => {
+              const { quantity, selectedSpecs } = getSelection(menu)
+              const unitPrice = menu.price + selectedSpecs.reduce((sum, s) => sum + (s.price_delta ?? 0), 0)
+              const specsByType = new Map<string, MenuSpec[]>()
+              for (const s of menu.specs ?? []) {
+                if (!specsByType.has(s.spec_type)) specsByType.set(s.spec_type, [])
+                specsByType.get(s.spec_type)!.push(s)
+              }
+
+              return (
+                <Card
+                  key={menu.id}
+                  hoverable
+                  loading={loading}
+                  className="order-desk-menu-card"
+                  cover={
+                    <div className="order-desk-menu-cover">
+                      {menu.image ? (
                         <img
                           alt={menu.name}
                           src={menu.image}
-                          style={{ height: 130, objectFit: 'cover' }}
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none'
                           }}
                         />
                       ) : (
-                        <div
-                          style={{
-                            height: 130,
-                            background: 'linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#999',
-                            fontSize: 12,
-                          }}
-                        >
-                          暂无图片
-                        </div>
-                      )
-                    }
-                  >
-                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
-                      <span style={{ fontWeight: 600, fontSize: 15, flex: 1, minWidth: 0 }}>{menu.name}</span>
-                      <Space>
+                        <div className="order-desk-menu-empty-cover">暂无图片</div>
+                      )}
+                    </div>
+                  }
+                >
+                  <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                    <div className="order-desk-menu-topline">
+                      <div style={{ minWidth: 0 }}>
+                        <Typography.Title level={5} style={{ margin: 0 }}>
+                          {menu.name}
+                        </Typography.Title>
+                        {menu.description ? (
+                          <Typography.Paragraph
+                            type="secondary"
+                            ellipsis={{ rows: 2, tooltip: menu.description }}
+                            style={{ margin: '4px 0 0' }}
+                          >
+                            {menu.description}
+                          </Typography.Paragraph>
+                        ) : null}
+                      </div>
+                      <Space size={4}>
                         {ttsSupported && (
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<SoundOutlined />}
-                            onClick={() => speakMenuInfo(menu)}
-                            style={{ padding: '0 4px' }}
-                          />
+                          <Button type="text" size="small" icon={<SoundOutlined />} onClick={() => speakMenuInfo(menu)} />
                         )}
-                        <span style={{ color: '#f5222d', fontSize: 16, fontWeight: 600, flexShrink: 0 }}>
+                        <Tag color="red" style={{ marginInlineEnd: 0 }}>
                           ¥{unitPrice.toFixed(2)}
-                          {selectedSpecs.length > 0 && (
-                            <span style={{ fontSize: 11, color: '#888', fontWeight: 400 }}> 起</span>
-                          )}
-                        </span>
+                        </Tag>
                       </Space>
                     </div>
-                    {/* 数量：+- */}
-                    <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 12, color: '#666', width: 36 }}>数量</span>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<MinusOutlined />}
-                        onClick={() => setMenuQuantity(menu, Math.max(1, quantity - 1))}
-                        disabled={quantity <= 1}
-                      />
-                      <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 600 }}>{quantity}</span>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<PlusOutlined />}
-                        onClick={() => setMenuQuantity(menu, Math.min(99, quantity + 1))}
-                        disabled={quantity >= 99}
-                      />
+
+                    <div className="order-desk-menu-tags">
+                      {selectedSpecs.length > 0 ? (
+                        selectedSpecs.map((spec) => (
+                          <Tag key={`${menu.id}-${spec.spec_type}-${spec.spec_value}`} color="processing">
+                            {spec.spec_type}: {spec.spec_value}
+                          </Tag>
+                        ))
+                      ) : (
+                        <Tag>默认规格</Tag>
+                      )}
                     </div>
-                    {/* 规格：规格名+规格值同一行 */}
+
+                    <div className="order-desk-qty-box">
+                      <Typography.Text type="secondary">选择数量</Typography.Text>
+                      <Space size={4}>
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<MinusOutlined />}
+                          onClick={() => setMenuQuantity(menu, Math.max(1, quantity - 1))}
+                          disabled={quantity <= 1}
+                        />
+                        <strong style={{ minWidth: 28, textAlign: 'center' }}>{quantity}</strong>
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<PlusOutlined />}
+                          onClick={() => setMenuQuantity(menu, Math.min(99, quantity + 1))}
+                          disabled={quantity >= 99}
+                        />
+                      </Space>
+                    </div>
+
                     {specsByType.size > 0 &&
                       Array.from(specsByType.entries()).map(([type, opts]) => {
                         const current = selectedSpecs.find((s) => s.spec_type === type)
                         return (
-                          <div key={type} style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 12, color: '#666', flexShrink: 0 }}>{type}</span>
+                          <div key={type} className="order-desk-spec-block">
+                            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>
+                              {type}
+                            </Typography.Text>
                             <Radio.Group
                               value={current?.spec_value}
                               onChange={(e) => {
@@ -526,22 +433,148 @@ export default function OrderDesk() {
                           </div>
                         )
                       })}
-                    <Button
-                      type="primary"
-                      block
-                      size="middle"
-                      icon={<PlusOutlined />}
-                      onClick={() => addToCart(menu)}
-                      style={{ marginTop: 8, borderRadius: 8 }}
-                    >
+
+                    <Button type="primary" block icon={<PlusOutlined />} onClick={() => addToCart(menu)}>
                       加入购物车
                     </Button>
-                  </Card>
-                )
-              })}
+                  </Space>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="order-desk-sidebar">
+        <Card className="order-desk-summary-card">
+          <Space direction="vertical" size={18} style={{ width: '100%' }}>
+            <div className="page-toolbar" style={{ marginBottom: 0 }}>
+              <div>
+                <Typography.Title level={5} style={{ margin: 0 }}>
+                  订单结算
+                </Typography.Title>
+                <Typography.Text type="secondary">
+                  {orderType === 'dine_in' ? (selectedTable ? `当前桌台：${selectedTable.code}` : '请选择堂食桌台') : '当前为打包外带'}
+                </Typography.Text>
+              </div>
+              <Button type="link" danger style={{ padding: 0 }} onClick={clearCart} disabled={cart.length === 0}>
+                清空
+              </Button>
             </div>
-          )}
-        </div>
+
+            <Space size="large" wrap>
+              <Statistic title="菜品数量" value={cartItemCount} suffix="份" />
+              <Statistic title="订单金额" value={cartTotal} precision={2} prefix="¥" />
+            </Space>
+
+            <Form layout="vertical">
+              <Form.Item label="就餐方式" style={{ marginBottom: 12 }}>
+                <Radio.Group
+                  value={orderType}
+                  onChange={(e) => setOrderType(e.target.value)}
+                  optionType="button"
+                  options={ORDER_TYPE_OPTIONS}
+                />
+              </Form.Item>
+              {orderType === 'dine_in' && (
+                <Form.Item
+                  label={`桌号${tablesLoading ? '（加载中）' : tables.length ? `（共 ${tables.length} 桌）` : ''}`}
+                  style={{ marginBottom: 0 }}
+                >
+                  {tables.length === 0 && !tablesLoading ? (
+                    <Alert type="warning" showIcon message="暂无餐桌，请先在餐桌管理中添加" />
+                  ) : (
+                    <Radio.Group
+                      value={tableId}
+                      onChange={(e) => setTableId(e.target.value)}
+                      optionType="button"
+                      style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}
+                      options={tables.map((t) => ({ label: `${t.code}（${t.capacity}人）`, value: t.id }))}
+                    />
+                  )}
+                </Form.Item>
+              )}
+            </Form>
+
+            <Button
+              type="primary"
+              size="large"
+              block
+              onClick={handleSubmit}
+              loading={submitting}
+              disabled={cart.length === 0}
+            >
+              提交订单
+            </Button>
+          </Space>
+        </Card>
+
+        <Card className="order-desk-cart-card">
+          <Space direction="vertical" size={14} style={{ width: '100%' }}>
+            <div className="page-toolbar" style={{ marginBottom: 0 }}>
+              <div>
+                <Typography.Title level={5} style={{ margin: 0 }}>
+                  购物车
+                </Typography.Title>
+                <Typography.Text type="secondary">
+                  已选择 {cart.length} 种菜品，共 {cartItemCount} 份
+                </Typography.Text>
+              </div>
+            </div>
+
+            {cart.length === 0 ? (
+              <Empty description="先从左侧选择菜品加入购物车" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            ) : (
+              <div className="order-desk-cart-list">
+                {cart.map((item, idx) => (
+                  <div key={`${item.menuId}-${item.specInfo ?? ''}-${idx}`} className="order-desk-cart-item">
+                    <div className="order-desk-cart-thumb">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none'
+                          }}
+                        />
+                      ) : (
+                        <div className="order-desk-cart-thumb-empty">无图</div>
+                      )}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <Typography.Text strong>{item.name}</Typography.Text>
+                      {item.specInfo ? (
+                        <Typography.Paragraph
+                          type="secondary"
+                          ellipsis={{ rows: 1, tooltip: item.specInfo }}
+                          style={{ margin: '4px 0 0' }}
+                        >
+                          {item.specInfo}
+                        </Typography.Paragraph>
+                      ) : null}
+                      <Typography.Text style={{ color: '#f5222d' }}>¥{item.price.toFixed(2)}</Typography.Text>
+                    </div>
+                    <Space size={4}>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<MinusOutlined />}
+                        onClick={() => updateCartQty(item.menuId, item.specInfo, -1)}
+                      />
+                      <strong style={{ minWidth: 24, textAlign: 'center' }}>{item.quantity}</strong>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<PlusOutlined />}
+                        onClick={() => updateCartQty(item.menuId, item.specInfo, 1)}
+                      />
+                    </Space>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Space>
+        </Card>
       </div>
     </div>
   )

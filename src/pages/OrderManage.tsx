@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
+  Card,
+  Col,
+  Empty,
   Typography,
   Table,
   Button,
@@ -12,6 +15,8 @@ import {
   message,
   Tag,
   Descriptions,
+  Row,
+  Statistic,
 } from 'antd'
 import { PlusOutlined, EyeOutlined } from '@ant-design/icons'
 import type { Order, Menu, Table as TTable } from '../api/types'
@@ -65,7 +70,7 @@ export default function OrderManage() {
     }
   }
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
       const res = await listOrders({
@@ -81,11 +86,11 @@ export default function OrderManage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, statusFilter, orderTypeFilter])
 
   useEffect(() => {
     load()
-  }, [page, statusFilter, orderTypeFilter])
+  }, [load])
 
   const openCreate = async () => {
     form.resetFields()
@@ -143,154 +148,226 @@ export default function OrderManage() {
   }
 
   return (
-    <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-        <Space wrap>
-          <Typography.Text type="secondary">状态：</Typography.Text>
-          <Select
-            allowClear
-            placeholder="全部"
-            value={statusFilter ?? undefined}
-            onChange={setStatusFilter}
-            style={{ minWidth: 100 }}
-            options={Object.entries(STATUS_MAP).map(([k, v]) => ({ label: v, value: k }))}
-          />
-          <Typography.Text type="secondary">类型：</Typography.Text>
-          <Select
-            allowClear
-            placeholder="全部"
-            value={orderTypeFilter ?? undefined}
-            onChange={setOrderTypeFilter}
-            style={{ minWidth: 110 }}
-            options={Object.entries(ORDER_TYPE_MAP).map(([k, v]) => ({ label: v, value: k }))}
-          />
-        </Space>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新建订单</Button>
-      </div>
-      <Table
-        rowKey="id"
-        loading={loading}
-        dataSource={orders}
-        columns={[
-          { title: 'ID', dataIndex: 'id', width: 70 },
-          { title: '订单号', dataIndex: 'order_no', width: 140, ellipsis: true },
-          {
-            title: '类型',
-            dataIndex: 'order_type',
-            width: 100,
-            render: (t: string) => {
-              const label = ORDER_TYPE_MAP[t] ?? t
-              const color = t === 'dine_in' ? 'blue' : t === 'takeaway' ? 'orange' : 'default'
-              return <Tag color={color}>{label}</Tag>
+    <div className="manage-shell">
+      <Card className="manage-hero-card">
+        <div className="manage-hero-grid">
+          <div>
+            <Typography.Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
+              订单管理
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              统一查看订单状态、金额、桌台信息和明细，并支持快速创建与更新状态。
+            </Typography.Text>
+          </div>
+          <div className="manage-highlight-list">
+            <div className="manage-highlight-item">
+              <Typography.Text type="secondary">当前目标</Typography.Text>
+              <Typography.Title level={5} style={{ margin: '6px 0 0' }}>
+                优先关注待支付、已支付、制作中订单
+              </Typography.Title>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={8}>
+          <Card className="manage-stat-card">
+            <Statistic title="订单总数" value={total} suffix="单" />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card className="manage-stat-card">
+            <Statistic title="当前页待处理" value={orders.filter((item) => ['created', 'paid', 'preparing'].includes(item.status)).length} suffix="单" />
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card className="manage-stat-card">
+            <Statistic title="当前页金额" value={orders.reduce((sum, item) => sum + (item.total_amount || 0), 0)} precision={2} prefix="¥" />
+          </Card>
+        </Col>
+      </Row>
+
+      <Card className="manage-panel-card">
+        <div className="manage-filter-bar">
+          <div className="manage-filter-group">
+            <Select
+              allowClear
+              placeholder="按状态筛选"
+              value={statusFilter ?? undefined}
+              onChange={setStatusFilter}
+              style={{ minWidth: 140 }}
+              options={Object.entries(STATUS_MAP).map(([k, v]) => ({ label: v, value: k }))}
+            />
+            <Select
+              allowClear
+              placeholder="按类型筛选"
+              value={orderTypeFilter ?? undefined}
+              onChange={setOrderTypeFilter}
+              style={{ minWidth: 140 }}
+              options={Object.entries(ORDER_TYPE_MAP).map(([k, v]) => ({ label: v, value: k }))}
+            />
+          </div>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新建订单</Button>
+        </div>
+      </Card>
+
+      <Card className="manage-table-card">
+        <Table
+          rowKey="id"
+          loading={loading}
+          dataSource={orders}
+          scroll={{ x: 1180 }}
+          locale={{
+            emptyText: <Empty className="table-empty-state" description="暂无订单记录" />,
+          }}
+          columns={[
+            { title: 'ID', dataIndex: 'id', width: 70 },
+            { title: '订单号', dataIndex: 'order_no', width: 160, ellipsis: true },
+            {
+              title: '类型',
+              dataIndex: 'order_type',
+              width: 100,
+              render: (t: string) => {
+                const label = ORDER_TYPE_MAP[t] ?? t
+                const color = t === 'dine_in' ? 'blue' : t === 'takeaway' ? 'orange' : 'default'
+                return <Tag color={color}>{label}</Tag>
+              },
             },
-          },
-          { title: '状态', dataIndex: 'status', width: 90, render: (s: string) => <Tag>{STATUS_MAP[s] ?? s}</Tag> },
-          { title: '金额', dataIndex: 'total_amount', width: 90, render: (v: number) => `¥${v?.toFixed(2) ?? '0.00'}` },
-          {
-            title: '桌台',
-            dataIndex: 'table_code',
-            width: 120,
-            render: (code: string, record: Order) => {
-              if (!code) return <span style={{ color: '#bfbfbf' }}>—</span>
-              const text = record.table_category ? `${record.table_category}-${code}` : code
-              return (
-                <Tag color="cyan" style={{ margin: 0 }}>
-                  {text}
-                </Tag>
-              )
+            {
+              title: '状态',
+              dataIndex: 'status',
+              width: 100,
+              render: (s: string) => <Tag color={s === 'completed' ? 'green' : s === 'cancelled' ? 'default' : 'gold'}>{STATUS_MAP[s] ?? s}</Tag>,
             },
-          },
-          {
-            title: '创建日期',
-            dataIndex: 'create_at',
-            width: 160,
-            render: (t: number) => (t ? new Date(t * 1000).toLocaleString('zh-CN') : '-'),
-          },
-          { title: '备注', dataIndex: 'remark', ellipsis: true },
-          {
-            title: '操作',
-            width: 180,
-            fixed: 'right',
-            render: (_: unknown, r: Order) => (
-              <Space wrap>
-                <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(r.id)}>
-                  查看
-                </Button>
-                <Select
-                  size="small"
-                  value={r.status}
-                  onChange={(status) => handleUpdateStatus(r.id, status)}
-                  style={{ width: 100 }}
-                  options={Object.entries(STATUS_MAP).map(([k, v]) => ({ label: v, value: k }))}
-                />
-              </Space>
-            ),
-          },
-        ]}
-        pagination={{ current: page, pageSize: 10, total, showTotal: (t) => `共 ${t} 条`, onChange: setPage }}
-      />
+            { title: '金额', dataIndex: 'total_amount', width: 100, render: (v: number) => <Tag color="red">¥{v?.toFixed(2) ?? '0.00'}</Tag> },
+            {
+              title: '桌台',
+              dataIndex: 'table_code',
+              width: 120,
+              render: (code: string, record: Order) => {
+                if (!code) return <span style={{ color: '#bfbfbf' }}>—</span>
+                const text = record.table_category ? `${record.table_category}-${code}` : code
+                return <Tag color="cyan">{text}</Tag>
+              },
+            },
+            {
+              title: '创建日期',
+              dataIndex: 'create_at',
+              width: 180,
+              render: (t: number) => (t ? new Date(t * 1000).toLocaleString('zh-CN') : '-'),
+            },
+            { title: '备注', dataIndex: 'remark', ellipsis: true, render: (value?: string) => value || '-' },
+            {
+              title: '操作',
+              width: 180,
+              fixed: 'right',
+              render: (_: unknown, r: Order) => (
+                <Space wrap>
+                  <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(r.id)}>
+                    查看
+                  </Button>
+                  <Select
+                    size="small"
+                    value={r.status}
+                    onChange={(status) => handleUpdateStatus(r.id, status)}
+                    style={{ width: 100 }}
+                    options={Object.entries(STATUS_MAP).map(([k, v]) => ({ label: v, value: k }))}
+                  />
+                </Space>
+              ),
+            },
+          ]}
+          pagination={{ current: page, pageSize: 10, total, showTotal: (t) => `共 ${t} 条`, onChange: setPage }}
+        />
+      </Card>
+
       <Modal
+        className="manage-modal"
         title="新建订单"
         open={modalOpen}
         onOk={onOk}
         onCancel={() => setModalOpen(false)}
-        width={560}
+        okText="提交"
+        cancelText="取消"
+        centered
+        width={760}
         destroyOnClose
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item name="order_type" label="订单类型" rules={[{ required: true }]}>
-            <Select options={Object.entries(ORDER_TYPE_MAP).map(([k, v]) => ({ label: v, value: k }))} />
-          </Form.Item>
-          <Form.Item noStyle shouldUpdate={(prev, cur) => prev?.order_type !== cur?.order_type}>
-            {({ getFieldValue }) =>
-              getFieldValue('order_type') === 'dine_in' ? (
-                <Form.Item name="table_id" label="选择餐桌（选填）">
-                  <Select
-                    placeholder="请选择餐桌"
-                    allowClear
-                    options={tables.map((t) => ({ label: `${t.code}（${t.capacity}人）`, value: t.id }))}
-                  />
-                </Form.Item>
-              ) : null
-            }
-          </Form.Item>
-          <Form.Item label="菜品">
+          <Typography.Text className="modal-note">
+            适合手动补单或前台快速录单，建议优先选择订单类型和桌台。
+          </Typography.Text>
+
+          <div className="manage-form-card">
+            <span className="manage-form-card-title">订单信息</span>
+            <div className="manage-form-grid">
+              <Form.Item name="order_type" label="订单类型" rules={[{ required: true }]}>
+                <Select options={Object.entries(ORDER_TYPE_MAP).map(([k, v]) => ({ label: v, value: k }))} />
+              </Form.Item>
+              <Form.Item noStyle shouldUpdate={(prev, cur) => prev?.order_type !== cur?.order_type}>
+                {({ getFieldValue }) =>
+                  getFieldValue('order_type') === 'dine_in' ? (
+                    <Form.Item name="table_id" label="选择餐桌（选填）">
+                      <Select
+                        placeholder="请选择餐桌"
+                        allowClear
+                        options={tables.map((t) => ({ label: `${t.code}（${t.capacity}人）`, value: t.id }))}
+                      />
+                    </Form.Item>
+                  ) : (
+                    <Form.Item label="桌台信息">
+                      <Input value="外带订单无需选择桌台" disabled />
+                    </Form.Item>
+                  )
+                }
+              </Form.Item>
+            </div>
+            <Form.Item name="remark" label="备注" style={{ marginBottom: 0 }}>
+              <Input.TextArea rows={3} placeholder="选填" />
+            </Form.Item>
+          </div>
+
+          <div className="manage-form-card">
+            <span className="manage-form-card-title">菜品明细</span>
+            <Form.Item label="菜品" style={{ marginBottom: 0 }}>
             <Form.List name="items">
               {(fields, { add, remove }) => (
-                <>
+                <div className="inline-editor-list">
                   {fields.map(({ key, name, ...rest }) => (
-                    <Space key={key} style={{ marginBottom: 8 }} align="baseline">
-                      <Form.Item {...rest} name={[name, 'menu_id']} rules={[{ required: true }]} noStyle>
+                    <div key={key} className="inline-editor-row">
+                      <Form.Item {...rest} name={[name, 'menu_id']} label="菜品" rules={[{ required: true }]}>
                         <Select
                           placeholder="选择菜品"
-                          style={{ width: 160 }}
                           options={menus.map((m) => ({ label: `${m.name} ¥${m.price}`, value: m.id }))}
                         />
                       </Form.Item>
-                      <Form.Item {...rest} name={[name, 'quantity']} rules={[{ required: true }]} initialValue={1} noStyle>
-                        <InputNumber min={1} placeholder="数量" style={{ width: 70 }} />
+                      <Form.Item {...rest} name={[name, 'spec_info']} label="规格备注">
+                        <Input placeholder="如：少辣、加饭" />
                       </Form.Item>
-                      <Form.Item {...rest} name={[name, 'spec_info']} noStyle>
-                        <Input placeholder="规格备注" style={{ width: 100 }} />
+                      <Form.Item {...rest} name={[name, 'quantity']} label="数量" rules={[{ required: true }]} initialValue={1}>
+                        <InputNumber min={1} placeholder="数量" style={{ width: '100%' }} />
                       </Form.Item>
                       <Button type="text" danger onClick={() => remove(name)}>删</Button>
-                    </Space>
+                    </div>
                   ))}
                   <Button type="dashed" onClick={() => add()} block>+ 添加菜品</Button>
-                </>
+                </div>
               )}
             </Form.List>
-          </Form.Item>
-          <Form.Item name="remark" label="备注"><Input.TextArea rows={2} placeholder="选填" /></Form.Item>
+            </Form.Item>
+          </div>
         </Form>
       </Modal>
 
       <Modal
+        className="manage-modal"
         title="订单详情"
         open={detailOpen}
         onCancel={() => setDetailOpen(false)}
         footer={null}
-        width={560}
+        centered
+        width={760}
       >
         {detailOrder && (
           <>
@@ -332,6 +409,7 @@ export default function OrderManage() {
               size="small"
               rowKey={(_, i) => String(i)}
               dataSource={detailOrder.items ?? []}
+              scroll={{ x: 520 }}
               pagination={false}
               columns={[
                 { title: '菜品', dataIndex: 'menu_name' },

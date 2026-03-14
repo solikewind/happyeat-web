@@ -13,6 +13,8 @@
 body {
   margin: 0;
   min-height: 100vh;
+  color: #101828;
+  background: #f4f7fb;
 }
 
 a {
@@ -20,18 +22,39 @@ a {
   text-decoration: none;
 }
 
-/* 左侧导航：整块背景（Sider + 内部 Menu 一起改，否则还是黑的） */
 .ant-layout-sider,
 .ant-layout-sider .ant-layout-sider-children,
 .ant-layout-sider .ant-menu.ant-menu-dark,
 .ant-layout-sider .ant-menu-dark.ant-menu-inline {
-  background: #010c49 !important; /* 侧栏+菜单背景，改成你要的色值，例如 #e23232 红、#0d1b2a 深蓝 */
+  background: #0f172a !important;
 }
+
 .ant-layout-sider .ant-menu-dark .ant-menu-item,
 .ant-layout-sider .ant-menu-dark .ant-menu-submenu-title {
   background: transparent !important;
 }
+
 .ant-layout-sider .ant-menu-dark .ant-menu-item-selected {
-  background: #1890ff !important; /* 选中项背景，可改 */
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(37, 99, 235, 0.9)) !important;
+}
+
+.ant-layout-sider .ant-menu-dark .ant-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.ant-card,
+.ant-table-wrapper,
+.ant-tabs .ant-tabs-content-holder,
+.ant-modal .ant-modal-content,
+.ant-dropdown .ant-dropdown-menu {
+  border-radius: 18px;
+}
+
+.ant-table-wrapper {
+  overflow: hidden;
+}
+
+.ant-btn {
+  font-weight: 500;
 }
 

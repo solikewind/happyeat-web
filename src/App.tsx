@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { ConfigProvider } from 'antd'
+import { ConfigProvider, theme as antdTheme } from 'antd'
+import zhCN from 'antd/locale/zh_CN'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import MainLayout from './layouts/MainLayout'
@@ -45,7 +46,43 @@ function AppRoutes() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ConfigProvider locale={undefined}>
+      <ConfigProvider
+        locale={zhCN}
+        theme={{
+          algorithm: antdTheme.defaultAlgorithm,
+          token: {
+            colorPrimary: '#1677ff',
+            colorBgLayout: '#f4f7fb',
+            colorBorderSecondary: '#e5eaf3',
+            colorTextSecondary: '#667085',
+            borderRadius: 14,
+            fontSize: 14,
+          },
+          components: {
+            Layout: {
+              headerBg: '#ffffff',
+              siderBg: '#0f172a',
+              bodyBg: '#f4f7fb',
+            },
+            Card: {
+              borderRadiusLG: 18,
+            },
+            Button: {
+              borderRadius: 10,
+              controlHeight: 38,
+            },
+            Input: {
+              borderRadius: 10,
+            },
+            Select: {
+              borderRadius: 10,
+            },
+            Table: {
+              headerBg: '#f8fafc',
+            },
+          },
+        }}
+      >
         <AuthProvider>
           <BrowserRouter>
             <AppRoutes />
