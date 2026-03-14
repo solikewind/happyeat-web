@@ -97,8 +97,8 @@ export function WorkbenchTTSExample() {
 export function OrderCompleteTTSExample() {
   const { speak } = useTTS()
 
-  // 示例：处理订单完成的函数
-  const handleOrderComplete = async (orderNo: string, tableCode?: string) => {
+  // 示例：处理订单完成的函数（仅作演示）
+  const _handleOrderComplete = async (orderNo: string, tableCode?: string) => {
     // 执行完成订单的逻辑...
 
     // 播放完成提示
@@ -110,7 +110,7 @@ export function OrderCompleteTTSExample() {
   }
 
   // 实际使用示例：
-  // handleOrderComplete('ORDER001', 'A01')
+  // _handleOrderComplete('ORDER001', 'A01')
 
   return null
 }
