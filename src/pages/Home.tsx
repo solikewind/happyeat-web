@@ -15,6 +15,10 @@ import { listOrders } from '../api/order'
 import { listTables } from '../api/table'
 import type { Order, Table } from '../api/types'
 
+const HISTORY_DAYS = 14
+const HISTORY_PAGE_SIZE = 200
+const HISTORY_MAX_PAGES = 6
+
 const links = [
   {
     path: '/menu',
@@ -31,7 +35,7 @@ const links = [
   {
     path: '/order-desk',
     title: '点餐台',
-    description: '前台点单主入口，支持菜品选择、规格组合和语音点单。',
+    description: '前台点单入口，支持菜品选择、规格组合和语音点餐。',
     icon: <ShoppingCartOutlined />,
   },
   {
@@ -48,6 +52,44 @@ const links = [
   },
 ]
 
+interface DailyOrderPoint {
+  key: string
+  label: string
+  value: number
+}
+
+const formatDayKey = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const formatDayLabel = (date: Date) => {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${month}/${day}`
+}
+
+const createHistorySeed = () => {
+  const startDate = new Date()
+  startDate.setHours(0, 0, 0, 0)
+  startDate.setDate(startDate.getDate() - (HISTORY_DAYS - 1))
+
+  const points: DailyOrderPoint[] = []
+  for (let index = 0; index < HISTORY_DAYS; index += 1) {
+    const day = new Date(startDate)
+    day.setDate(startDate.getDate() + index)
+    points.push({
+      key: formatDayKey(day),
+      label: formatDayLabel(day),
+      value: 0,
+    })
+  }
+
+  return { points, startTs: Math.floor(startDate.getTime() / 1000) }
+}
+
 export default function Home() {
   const [loading, setLoading] = useState(false)
   const [menuTotal, setMenuTotal] = useState(0)
@@ -55,6 +97,7 @@ export default function Home() {
   const [busyTableTotal, setBusyTableTotal] = useState(0)
   const [orderTotal, setOrderTotal] = useState(0)
   const [pendingOrderTotal, setPendingOrderTotal] = useState(0)
+  const [orderHistory, setOrderHistory] = useState<DailyOrderPoint[]>([])
 
   useEffect(() => {
     const loadOverview = async () => {
@@ -63,19 +106,47 @@ export default function Home() {
         const [menuRes, tableRes, orderRes] = await Promise.all([
           listMenus({ current: 1, pageSize: 500 }),
           listTables({ current: 1, pageSize: 500 }),
-          listOrders({ current: 1, pageSize: 200 }),
+          listOrders({ current: 1, pageSize: HISTORY_PAGE_SIZE }),
         ])
 
         const tables = Array.isArray(tableRes?.tables) ? tableRes.tables : []
-        const orders = Array.isArray(orderRes?.orders) ? orderRes.orders : []
+        const firstPageOrders = Array.isArray(orderRes?.orders) ? orderRes.orders : []
+        const totalOrders = Number(orderRes?.total) || 0
+        const { points, startTs } = createHistorySeed()
+        const allHistoryOrders = [...firstPageOrders]
 
-        setMenuTotal(menuRes?.total ?? 0)
-        setTableTotal(tableRes?.total ?? 0)
+        if (allHistoryOrders.length < totalOrders) {
+          for (let page = 2; page <= HISTORY_MAX_PAGES; page += 1) {
+            const pageRes = await listOrders({ current: page, pageSize: HISTORY_PAGE_SIZE })
+            const pageOrders = Array.isArray(pageRes?.orders) ? pageRes.orders : []
+            if (!pageOrders.length) break
+
+            allHistoryOrders.push(...pageOrders)
+            const oldestTs = Number(pageOrders[pageOrders.length - 1]?.create_at) || 0
+
+            if (oldestTs > 0 && oldestTs < startTs) break
+            if (allHistoryOrders.length >= totalOrders) break
+          }
+        }
+
+        const historyMap = new Map(points.map((item) => [item.key, 0]))
+        allHistoryOrders.forEach((item) => {
+          const createAt = Number(item?.create_at) || 0
+          if (!createAt || createAt < startTs) return
+          const dayKey = formatDayKey(new Date(createAt * 1000))
+          if (!historyMap.has(dayKey)) return
+          historyMap.set(dayKey, (historyMap.get(dayKey) || 0) + 1)
+        })
+
+        setMenuTotal(Number(menuRes?.total) || 0)
+        setTableTotal(Number(tableRes?.total) || 0)
         setBusyTableTotal(tables.filter((item: Table) => item.status === 'using').length)
-        setOrderTotal(orderRes?.total ?? 0)
+        setOrderTotal(totalOrders)
         setPendingOrderTotal(
-          orders.filter((item: Order) => item.status === 'created' || item.status === 'paid' || item.status === 'preparing').length
+          firstPageOrders.filter((item: Order) => item.status === 'created' || item.status === 'paid' || item.status === 'preparing')
+            .length
         )
+        setOrderHistory(points.map((item) => ({ ...item, value: historyMap.get(item.key) || 0 })))
       } catch {
         message.error('首页概览加载失败')
       } finally {
@@ -95,6 +166,9 @@ export default function Home() {
     ],
     [busyTableTotal, menuTotal, pendingOrderTotal, tableTotal]
   )
+
+  const historyMax = useMemo(() => Math.max(1, ...orderHistory.map((item) => item.value)), [orderHistory])
+  const historyTotal = useMemo(() => orderHistory.reduce((sum, item) => sum + item.value, 0), [orderHistory])
 
   return (
     <div>
@@ -130,7 +204,7 @@ export default function Home() {
             <div className="home-highlight-item">
               <Typography.Text type="secondary">建议优先处理</Typography.Text>
               <Typography.Title level={4} style={{ margin: '6px 0 0' }}>
-                支付后未完成的订单
+                已支付但未完成的订单
               </Typography.Title>
             </div>
           </div>
@@ -146,6 +220,32 @@ export default function Home() {
           </Col>
         ))}
       </Row>
+
+      <Card className="home-history-card" loading={loading} style={{ marginTop: 20 }}>
+        <div className="home-history-head">
+          <div>
+            <Typography.Title level={5} className="home-history-title">
+              近14天订单历史
+            </Typography.Title>
+            <Typography.Text className="home-history-subtitle">按天统计订单量，方便查看近期波动趋势</Typography.Text>
+          </div>
+          <Typography.Text className="home-history-total">近14天总计 {historyTotal} 单</Typography.Text>
+        </div>
+
+        <div className="home-history-chart-wrap">
+          <div className="home-history-chart">
+            {orderHistory.map((item) => (
+              <div className="home-history-col" key={item.key}>
+                <span className="home-history-value">{item.value}</span>
+                <div className="home-history-bar-track">
+                  <div className="home-history-bar" style={{ height: `${Math.max(8, Math.round((item.value / historyMax) * 100))}%` }} />
+                </div>
+                <span className="home-history-label">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
 
       <div className="page-toolbar" style={{ marginTop: 24 }}>
         <div>

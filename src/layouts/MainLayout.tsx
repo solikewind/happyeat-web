@@ -46,7 +46,7 @@ export default function MainLayout() {
   return (
     <OrderCartProvider>
       <Layout className="app-shell">
-        <Sider className="app-sider" theme="dark" breakpoint="lg" collapsedWidth="0" width={264}>
+        <Sider className="app-sider" theme="light" breakpoint="lg" collapsedWidth="0" width={264}>
           <div className="app-brand">
             <div className="app-brand-mark">H</div>
             <div>
@@ -54,10 +54,9 @@ export default function MainLayout() {
               <div className="app-brand-subtitle">餐饮经营后台</div>
             </div>
           </div>
-          <div className="app-nav-caption">功能导航</div>
           <Menu
             className="app-nav-menu"
-            theme="dark"
+            theme="light"
             selectedKeys={[selectedKey]}
             mode="inline"
             items={navItems.map((item) => ({
@@ -65,7 +64,6 @@ export default function MainLayout() {
               label: (
                 <Link to={item.key}>
                   <span>{item.label}</span>
-                  <span className="app-nav-item-description">{item.description}</span>
                 </Link>
               ),
             }))}

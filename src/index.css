@@ -1,8 +1,8 @@
 :root {
-  --app-bg-top: #f7fbff;
-  --app-bg-bottom: #edf4ff;
+  --app-bg-top: #f6f7f9;
+  --app-bg-bottom: #eef1f5;
   --app-text: #101828;
-  --app-sider-bg: #0f172a;
+  --app-sider-bg: #f7f8fa;
   --app-font-sans: 'Plus Jakarta Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-family: var(--app-font-sans);
   line-height: 1.5;
@@ -20,8 +20,8 @@ body {
   min-height: 100vh;
   color: var(--app-text);
   background:
-    radial-gradient(circle at 12% -10%, rgba(56, 189, 248, 0.16), transparent 26%),
-    radial-gradient(circle at 88% 110%, rgba(29, 78, 216, 0.12), transparent 24%),
+    radial-gradient(circle at 12% -10%, rgba(17, 24, 39, 0.05), transparent 26%),
+    radial-gradient(circle at 88% 110%, rgba(71, 85, 105, 0.06), transparent 24%),
     linear-gradient(180deg, var(--app-bg-top) 0%, var(--app-bg-bottom) 100%);
 }
 
@@ -32,22 +32,23 @@ a {
 
 .ant-layout-sider,
 .ant-layout-sider .ant-layout-sider-children,
-.ant-layout-sider .ant-menu.ant-menu-dark,
-.ant-layout-sider .ant-menu-dark.ant-menu-inline {
+.ant-layout-sider .ant-menu.ant-menu-light,
+.ant-layout-sider .ant-menu-light.ant-menu-inline {
   background: var(--app-sider-bg) !important;
 }
 
-.ant-layout-sider .ant-menu-dark .ant-menu-item,
-.ant-layout-sider .ant-menu-dark .ant-menu-submenu-title {
+.ant-layout-sider .ant-menu-light .ant-menu-item,
+.ant-layout-sider .ant-menu-light .ant-menu-submenu-title {
   background: transparent !important;
 }
 
-.ant-layout-sider .ant-menu-dark .ant-menu-item-selected {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(37, 99, 235, 0.9)) !important;
+.ant-layout-sider .ant-menu-light .ant-menu-item-selected {
+  background: linear-gradient(135deg, #111827, #1f2937) !important;
+  color: #fff !important;
 }
 
-.ant-layout-sider .ant-menu-dark .ant-menu-item:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
+.ant-layout-sider .ant-menu-light .ant-menu-item:hover {
+  background: rgba(17, 24, 39, 0.06) !important;
 }
 
 .ant-card,
