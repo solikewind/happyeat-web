@@ -183,7 +183,7 @@ export default function Home() {
             </Typography.Text>
             <Space wrap size="middle">
               <Link to="/order-desk">
-                <Button type="primary" size="large" icon={<ShoppingCartOutlined />}>
+                <Button className="app-accent-cta" type="primary" size="large" icon={<ShoppingCartOutlined />}>
                   进入点餐台
                 </Button>
               </Link>

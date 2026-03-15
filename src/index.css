@@ -3,6 +3,9 @@
   --app-bg-bottom: #eef1f5;
   --app-text: #101828;
   --app-sider-bg: #f7f8fa;
+  --app-accent-warm: #f59e0b;
+  --app-accent-warm-strong: #ea580c;
+  --app-accent-warm-soft: #ffedd5;
   --app-font-sans: 'Plus Jakarta Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-family: var(--app-font-sans);
   line-height: 1.5;
@@ -16,6 +19,9 @@
   --app-bg-bottom: #121721;
   --app-text: #e5e7eb;
   --app-sider-bg: #11151c;
+  --app-accent-warm: #fbbf24;
+  --app-accent-warm-strong: #fb923c;
+  --app-accent-warm-soft: #3b2a16;
 }
 
 * {
@@ -64,6 +70,16 @@ a {
   color: #fff !important;
 }
 
+.ant-layout-sider .ant-menu-light .ant-menu-item-selected .ant-menu-item-icon {
+  color: #93c5fd !important;
+}
+
+.ant-layout-sider .ant-menu-light .ant-menu-item-selected .ant-menu-title-content,
+.ant-layout-sider .ant-menu-light .ant-menu-item-selected .ant-menu-title-content a {
+  color: #f8fafc !important;
+  font-weight: 700;
+}
+
 .ant-layout-sider .ant-menu-light .ant-menu-item:hover {
   background: rgba(17, 24, 39, 0.06) !important;
 }
@@ -83,6 +99,16 @@ a {
 [data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-item-selected:active {
   background: linear-gradient(135deg, #374151, #1f2937) !important;
   color: #ffffff !important;
+}
+
+[data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-item-selected .ant-menu-item-icon {
+  color: #fbbf24 !important;
+}
+
+[data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-item-selected .ant-menu-title-content,
+[data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-item-selected .ant-menu-title-content a {
+  color: #ffffff !important;
+  font-weight: 700;
 }
 
 .ant-layout-sider .ant-menu-light .ant-menu-item.ant-menu-item-selected,

@@ -260,7 +260,7 @@ export default function OrderDesk() {
                   }
                   trigger="hover"
                 >
-                  <Button type="primary" icon={<AudioOutlined />} onClick={startSTT}>
+                  <Button className="app-accent-cta-subtle" type="default" icon={<AudioOutlined />} onClick={startSTT}>
                     语音点餐
                   </Button>
                 </Popover>
@@ -446,7 +446,15 @@ export default function OrderDesk() {
               )}
             </Form>
 
-            <Button type="primary" size="large" block onClick={handleSubmit} loading={submitting} disabled={cart.length === 0}>
+            <Button
+              className="app-accent-cta"
+              type="primary"
+              size="large"
+              block
+              onClick={handleSubmit}
+              loading={submitting}
+              disabled={cart.length === 0}
+            >
               提交订单
             </Button>
           </Space>

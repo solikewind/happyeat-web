@@ -1,10 +1,13 @@
-﻿import { Link, Outlet, useLocation } from 'react-router-dom'
+﻿import { useState } from 'react'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Avatar, Breadcrumb, Button, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
 import {
   DashboardOutlined,
   HomeOutlined,
   LogoutOutlined,
+  MenuFoldOutlined,
   MenuOutlined,
+  MenuUnfoldOutlined,
   MoonOutlined,
   ShoppingCartOutlined,
   ShoppingOutlined,
@@ -33,6 +36,8 @@ export default function MainLayout() {
   const location = useLocation()
   const { logout } = useAuth()
   const { isDark, toggleTheme } = useThemeMode()
+  const [collapsed, setCollapsed] = useState(false)
+  const [isBreakpointBroken, setIsBreakpointBroken] = useState(false)
   const currentPage = pageMeta[location.pathname] ?? pageMeta['/']
   const selectedKey = navItems.find((item) => item.key === location.pathname)?.key ?? '/'
 
@@ -50,28 +55,68 @@ export default function MainLayout() {
   return (
     <OrderCartProvider>
       <Layout className="app-shell">
-        <Sider className="app-sider" theme="light" breakpoint="lg" collapsedWidth="0" width={264}>
-          <div className="app-brand">
+        <Sider
+          className="app-sider"
+          theme="light"
+          breakpoint="lg"
+          width={264}
+          collapsible
+          trigger={null}
+          collapsed={collapsed}
+          collapsedWidth={isBreakpointBroken ? 0 : 84}
+          onBreakpoint={(broken) => {
+            setIsBreakpointBroken(broken)
+            if (broken) setCollapsed(true)
+          }}
+        >
+          <div className={`app-brand${collapsed ? ' is-collapsed' : ''}`}>
             <div className="app-brand-mark">H</div>
-            <div>
-              <div className="app-brand-title">HappyEat</div>
-              <div className="app-brand-subtitle">餐饮经营后台</div>
-            </div>
+            {!collapsed && (
+              <div>
+                <div className="app-brand-title">HappyEat</div>
+                <div className="app-brand-subtitle">餐饮经营后台</div>
+              </div>
+            )}
           </div>
           <Menu
             className="app-nav-menu"
             theme="light"
             selectedKeys={[selectedKey]}
             mode="inline"
+            inlineCollapsed={collapsed}
             items={navItems.map((item) => ({
               ...item,
+              title: item.label,
               label: (
-                <Link to={item.key}>
-                  <span>{item.label}</span>
-                </Link>
+                <div className="app-nav-item-label">
+                  <Link to={item.key}>
+                    <span>{item.label}</span>
+                  </Link>
+                  {!isBreakpointBroken && !collapsed && item.key === selectedKey && (
+                    <Tooltip title={collapsed ? '展开侧边栏' : '收起侧边栏'}>
+                      <Button
+                        className="app-sider-toggle app-sider-toggle-in-menu"
+                        size="small"
+                        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          setCollapsed((prev) => !prev)
+                        }}
+                      />
+                    </Tooltip>
+                  )}
+                </div>
               ),
             }))}
           />
+          {!isBreakpointBroken && collapsed && (
+            <div className="app-sider-seam-toggle">
+              <Tooltip placement="right" title="展开侧边栏">
+                <Button className="app-sider-seam-btn" icon={<MenuUnfoldOutlined />} onClick={() => setCollapsed(false)} />
+              </Tooltip>
+            </div>
+          )}
         </Sider>
 
         <Layout className="app-main-layout">
