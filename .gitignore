@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Environment files
+.env
+.env.*  // 忽视所有env
+!.env.production    // 除了production
