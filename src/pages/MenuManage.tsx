@@ -1,40 +1,35 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Card,
-  Col,
-  Empty,
-  Typography,
-  Tabs,
-  Table,
   Button,
-  Space,
-  Modal,
+  Card,
+  Empty,
   Form,
   Input,
-  Select,
-  Row,
-  Statistic,
-  message,
+  Modal,
   Popconfirm,
+  Select,
+  Space,
+  Table,
+  Tabs,
   Tag,
+  Typography,
+  message,
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
-import type { MenuCategory, Menu, MenuSpec } from '../api/types'
+import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
+import type { Menu, MenuCategory, MenuSpec } from '../api/types'
 import {
-  listMenuCategories,
-  createMenuCategory,
-  updateMenuCategory,
-  deleteMenuCategory,
-  listMenus,
   createMenu,
-  updateMenu,
+  createMenuCategory,
   deleteMenu,
+  deleteMenuCategory,
   getMenu,
+  listMenuCategories,
+  listMenus,
+  updateMenu,
+  updateMenuCategory,
 } from '../api/menu'
 
 const asArray = <T,>(value: T[] | undefined | null) => (Array.isArray(value) ? value : [])
-
-// ============ 第一 Tab：菜单分类 ============
 
 function CategoryTab() {
   const [list, setList] = useState<MenuCategory[]>([])
@@ -42,8 +37,6 @@ function CategoryTab() {
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
   const pageSize = 10
-
-  /** 弹窗：新建 vs 编辑。open 时 id 为空表示新建，有值表示编辑 */
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form] = Form.useForm()
@@ -73,7 +66,10 @@ function CategoryTab() {
 
   const openEdit = (record: MenuCategory) => {
     setEditingId(record.id)
-    form.setFieldsValue({ name: record.name, description: record.description ?? '' })
+    form.setFieldsValue({
+      name: record.name,
+      description: record.description ?? '',
+    })
     setModalOpen(true)
   }
 
@@ -81,7 +77,10 @@ function CategoryTab() {
     const values = await form.validateFields()
     try {
       if (editingId == null) {
-        await createMenuCategory({ name: values.name, description: values.description || undefined })
+        await createMenuCategory({
+          name: values.name,
+          description: values.description || undefined,
+        })
         message.success('创建成功')
       } else {
         await updateMenuCategory(editingId, {
@@ -110,20 +109,19 @@ function CategoryTab() {
 
   return (
     <div className="manage-shell">
-      <div className="manage-mini-stats">
-        <div className="manage-mini-stat">
-          <span className="manage-mini-stat-label">分类总数</span>
-          <span className="manage-mini-stat-value">{total} 项</span>
+      <Card className="manage-panel-card">
+        <div className="manage-summary-strip">
+          <Tag color="blue" className="manage-summary-pill">
+            分类总数 {total}
+          </Tag>
+          <Tag color="cyan" className="manage-summary-pill">
+            本页显示 {list.length}
+          </Tag>
+          <Tag color="geekblue" className="manage-summary-pill">
+            常见分类 热菜 / 凉菜 / 饮品
+          </Tag>
         </div>
-        <div className="manage-mini-stat">
-          <span className="manage-mini-stat-label">当前页数量</span>
-          <span className="manage-mini-stat-value">{list.length} 项</span>
-        </div>
-        <div className="manage-mini-stat">
-          <span className="manage-mini-stat-label">常见分类</span>
-          <span className="manage-mini-stat-note">热菜 / 凉菜 / 饮品</span>
-        </div>
-      </div>
+      </Card>
 
       <Card className="manage-table-card">
         <div className="manage-filter-bar">
@@ -155,17 +153,23 @@ function CategoryTab() {
               dataIndex: 'name',
               render: (value: string) => <Tag color="blue">{value}</Tag>,
             },
-            { title: '描述', dataIndex: 'description', ellipsis: true, render: (value?: string) => value || '-' },
+            {
+              title: '描述',
+              dataIndex: 'description',
+              ellipsis: true,
+              render: (value?: string) => value || '-',
+            },
             {
               title: '创建日期',
               dataIndex: 'create_at',
               width: 180,
-              render: (ts: number | undefined) => (ts ? new Date(ts * 1000).toLocaleString('zh-CN') : '-'),
+              render: (ts: number | undefined) =>
+                ts ? new Date(ts * 1000).toLocaleString('zh-CN') : '-',
             },
             {
               title: '操作',
               width: 156,
-              render: (_, record) => (
+              render: (_, record: MenuCategory) => (
                 <Space>
                   <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>
                     编辑
@@ -184,7 +188,7 @@ function CategoryTab() {
             pageSize,
             total,
             showSizeChanger: false,
-            showTotal: (t) => `共 ${t} 条`,
+            showTotal: (count) => `共 ${count} 条`,
             onChange: setPage,
           }}
         />
@@ -221,18 +225,15 @@ function CategoryTab() {
   )
 }
 
-// ============ 第二 Tab：菜品列表 ============
-
 function MenuListTab() {
   const [menus, setMenus] = useState<Menu[]>([])
   const [categories, setCategories] = useState<MenuCategory[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
-  const [categoryFilter, setCategoryFilter] = useState<string | undefined>(undefined)
-  const [nameSearch, setNameSearch] = useState<string | undefined>(undefined)
+  const [categoryFilter, setCategoryFilter] = useState<string | undefined>()
+  const [nameSearch, setNameSearch] = useState<string | undefined>()
   const pageSize = 10
-
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form] = Form.useForm()
@@ -268,14 +269,14 @@ function MenuListTab() {
     loadMenus()
   }, [loadMenus])
 
-  const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]))
-  const pricedMenus = useMemo(() => menus.filter((item) => item.price > 0).length, [menus])
+  const categoryMap = Object.fromEntries(categories.map((item) => [item.id, item.name]))
+  const menusWithoutImage = useMemo(() => menus.filter((item) => !item.image).length, [menus])
+  const menusWithSpecs = useMemo(() => menus.filter((item) => (item.specs?.length ?? 0) > 0).length, [menus])
 
   const openCreate = async () => {
     setEditingId(null)
     form.resetFields()
     form.setFieldValue('specs', [])
-    // 打开弹窗时重新加载分类列表，确保显示最新分类
     await loadCategories()
     setModalOpen(true)
   }
@@ -290,7 +291,7 @@ function MenuListTab() {
         category_id: menu.category_id,
         description: menu.description ?? '',
         image: menu.image ?? '',
-        specs: (menu.specs && menu.specs.length) ? menu.specs : [],
+        specs: menu.specs?.length ? menu.specs : [],
       })
       setModalOpen(true)
     } catch {
@@ -301,12 +302,13 @@ function MenuListTab() {
   const onModalOk = async () => {
     const values = await form.validateFields()
     const specs: MenuSpec[] = (values.specs ?? [])
-      .filter((s: { spec_type?: string }) => s?.spec_type)
-      .map((s: { spec_type: string; spec_value: string; price_delta: number }) => ({
-        spec_type: s.spec_type,
-        spec_value: s.spec_value,
-        price_delta: Number(s.price_delta) || 0,
+      .filter((item: { spec_type?: string }) => item?.spec_type)
+      .map((item: { spec_type: string; spec_value: string; price_delta: number }) => ({
+        spec_type: item.spec_type,
+        spec_value: item.spec_value,
+        price_delta: Number(item.price_delta) || 0,
       }))
+
     try {
       if (editingId == null) {
         await createMenu({
@@ -319,7 +321,7 @@ function MenuListTab() {
         })
         message.success('创建成功')
       } else {
-        const menu: Menu = {
+        await updateMenu(editingId, {
           id: editingId,
           name: values.name,
           price: Number(values.price),
@@ -327,10 +329,7 @@ function MenuListTab() {
           description: values.description || undefined,
           image: values.image || undefined,
           specs: specs.length ? specs : undefined,
-          create_at: 0,
-          update_at: 0,
-        }
-        await updateMenu(editingId, menu)
+        })
         message.success('更新成功')
       }
       setModalOpen(false)
@@ -352,28 +351,27 @@ function MenuListTab() {
 
   const handleSearch = (value: string) => {
     setNameSearch(value.trim() || undefined)
-    setPage(1) // 搜索时重置到第一页
+    setPage(1)
   }
 
   return (
     <div className="manage-shell">
-      <Row gutter={[16, 16]}>
-        <Col xs={24} md={8}>
-          <Card className="manage-stat-card">
-            <Statistic title="菜品总数" value={total} suffix="道" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card className="manage-stat-card">
-            <Statistic title="当前页有图菜品" value={menus.filter((item) => !!item.image).length} suffix="道" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card className="manage-stat-card">
-            <Statistic title="已定价菜品" value={pricedMenus} suffix="道" />
-          </Card>
-        </Col>
-      </Row>
+      <Card className="manage-panel-card">
+        <div className="manage-summary-strip">
+          <Tag color="blue" className="manage-summary-pill">
+            菜品总数 {total}
+          </Tag>
+          <Tag color="cyan" className="manage-summary-pill">
+            本页显示 {menus.length}
+          </Tag>
+          <Tag color="gold" className="manage-summary-pill">
+            本页缺图 {menusWithoutImage}
+          </Tag>
+          <Tag color="geekblue" className="manage-summary-pill">
+            本页有规格 {menusWithSpecs}
+          </Tag>
+        </div>
+      </Card>
 
       <Card className="manage-panel-card">
         <div className="manage-filter-bar">
@@ -382,12 +380,12 @@ function MenuListTab() {
               allowClear
               placeholder="按分类筛选"
               value={categoryFilter ?? undefined}
-              onChange={(v) => {
-                setCategoryFilter(v ?? undefined)
+              onChange={(value) => {
+                setCategoryFilter(value ?? undefined)
                 setPage(1)
               }}
               style={{ minWidth: 160 }}
-              options={categories.map((c) => ({ label: c.name, value: c.name }))}
+              options={categories.map((item) => ({ label: item.name, value: item.name }))}
             />
             <Input.Search
               placeholder="搜索菜品名称"
@@ -395,8 +393,8 @@ function MenuListTab() {
               enterButton={<SearchOutlined />}
               style={{ width: 240 }}
               onSearch={handleSearch}
-              onChange={(e) => {
-                if (!e.target.value) {
+              onChange={(event) => {
+                if (!event.target.value) {
                   setNameSearch(undefined)
                   setPage(1)
                 }
@@ -430,8 +428,8 @@ function MenuListTab() {
                     <img
                       src={url}
                       alt=""
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none'
+                      onError={(event) => {
+                        ;(event.target as HTMLImageElement).style.display = 'none'
                       }}
                     />
                   </div>
@@ -440,18 +438,28 @@ function MenuListTab() {
                 ),
             },
             { title: '菜品名称', dataIndex: 'name' },
-            { title: '价格', dataIndex: 'price', width: 100, render: (v: number) => <Tag color="red">¥{v.toFixed(2)}</Tag> },
+            {
+              title: '价格',
+              dataIndex: 'price',
+              width: 100,
+              render: (value: number) => <Tag color="red">¥{value.toFixed(2)}</Tag>,
+            },
             {
               title: '分类',
               dataIndex: 'category_id',
               width: 120,
               render: (id: number) => <Tag color="blue">{categoryMap[id] ?? id}</Tag>,
             },
-            { title: '描述', dataIndex: 'description', ellipsis: true, render: (value?: string) => value || '-' },
+            {
+              title: '描述',
+              dataIndex: 'description',
+              ellipsis: true,
+              render: (value?: string) => value || '-',
+            },
             {
               title: '操作',
               width: 156,
-              render: (_, record) => (
+              render: (_, record: Menu) => (
                 <Space>
                   <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>
                     编辑
@@ -470,7 +478,7 @@ function MenuListTab() {
             pageSize,
             total,
             showSizeChanger: false,
-            showTotal: (t) => `共 ${t} 条`,
+            showTotal: (count) => `共 ${count} 条`,
             onChange: setPage,
           }}
         />
@@ -505,7 +513,7 @@ function MenuListTab() {
               <Form.Item name="category_id" label="所属分类" rules={[{ required: true, message: '请选择分类' }]}>
                 <Select
                   placeholder="请选择分类"
-                  options={categories.map((c) => ({ label: c.name, value: c.id }))}
+                  options={categories.map((item) => ({ label: item.name, value: item.id }))}
                 />
               </Form.Item>
               <Form.Item name="image" label="图片 URL">
@@ -520,31 +528,31 @@ function MenuListTab() {
           <div className="manage-form-card">
             <span className="manage-form-card-title">规格配置</span>
             <Form.Item label="规格（如辣度、份量加价）" style={{ marginBottom: 0 }}>
-            <Form.List name="specs">
-              {(fields, { add, remove }) => (
-                <div className="inline-editor-list">
-                  {fields.map(({ key, name, ...rest }) => (
-                    <div key={key} className="inline-editor-row">
-                      <Form.Item {...rest} name={[name, 'spec_type']} label="类型" rules={[{ required: true }]}>
-                        <Input placeholder="如：辣度" />
-                      </Form.Item>
-                      <Form.Item {...rest} name={[name, 'spec_value']} label="选项" rules={[{ required: true }]}>
-                        <Input placeholder="如：微辣" />
-                      </Form.Item>
-                      <Form.Item {...rest} name={[name, 'price_delta']} label="加价">
-                        <Input type="number" step={0.01} placeholder="0.00" />
-                      </Form.Item>
-                      <Button type="text" danger onClick={() => remove(name)}>
-                        删除
-                      </Button>
-                    </div>
-                  ))}
-                  <Button type="dashed" onClick={() => add()} block>
-                    + 添加规格
-                  </Button>
-                </div>
-              )}
-            </Form.List>
+              <Form.List name="specs">
+                {(fields, { add, remove }) => (
+                  <div className="inline-editor-list">
+                    {fields.map(({ key, name, ...rest }) => (
+                      <div key={key} className="inline-editor-row">
+                        <Form.Item {...rest} name={[name, 'spec_type']} label="类型" rules={[{ required: true }]}>
+                          <Input placeholder="如：辣度" />
+                        </Form.Item>
+                        <Form.Item {...rest} name={[name, 'spec_value']} label="选项" rules={[{ required: true }]}>
+                          <Input placeholder="如：微辣" />
+                        </Form.Item>
+                        <Form.Item {...rest} name={[name, 'price_delta']} label="加价">
+                          <Input type="number" step={0.01} placeholder="0.00" />
+                        </Form.Item>
+                        <Button type="text" danger onClick={() => remove(name)}>
+                          删除
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="dashed" onClick={() => add()} block>
+                      + 添加规格
+                    </Button>
+                  </div>
+                )}
+              </Form.List>
             </Form.Item>
           </div>
         </Form>
@@ -553,30 +561,16 @@ function MenuListTab() {
   )
 }
 
-// ============ 页面入口 ============
-
 export default function MenuManage() {
   return (
     <div className="manage-shell">
       <Card className="manage-hero-card">
-        <div className="manage-hero-grid">
-          <div>
-            <Typography.Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
-              菜单管理
-            </Typography.Title>
-            <Typography.Text type="secondary">
-              统一维护分类、菜品、图片和规格，保证点餐页和订单页展示清晰一致。
-            </Typography.Text>
-          </div>
-          <div className="manage-highlight-list">
-            <div className="manage-highlight-item">
-              <Typography.Text type="secondary">建议</Typography.Text>
-              <Typography.Title level={5} style={{ margin: '6px 0 0' }}>
-                先建分类，再补菜品与规格
-              </Typography.Title>
-            </div>
-          </div>
-        </div>
+        <Typography.Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
+          菜单管理
+        </Typography.Title>
+        <Typography.Text type="secondary">
+          统一维护分类、菜品、图片和规格，保证点餐页和订单页展示清晰一致。
+        </Typography.Text>
       </Card>
 
       <Card className="manage-panel-card">

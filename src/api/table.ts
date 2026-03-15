@@ -1,6 +1,15 @@
 import { api } from './client'
 import type { Table, TableCategory } from './types'
 
+export interface UpdateTableBody {
+  id: number
+  code: string
+  status: string
+  capacity: number
+  category_id: number
+  qr_code?: string
+}
+
 export async function listTableCategories(params?: { current?: number; pageSize?: number; name?: string }) {
   const { data } = await api.get<{ categories: TableCategory[]; total: number }>('/central/v1/table/categories', { params })
   return data
@@ -37,7 +46,7 @@ export async function getTable(id: number) {
   return data
 }
 
-export async function updateTable(id: number, table: Table) {
+export async function updateTable(id: number, table: UpdateTableBody) {
   await api.put(`/central/v1/table/${id}`, { table })
 }
 

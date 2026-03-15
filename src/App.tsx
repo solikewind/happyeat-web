@@ -65,10 +65,13 @@ export default function App() {
           token: {
             colorPrimary: '#1677ff',
             colorBgLayout: '#f4f7fb',
+            colorBgContainer: '#ffffff',
             colorBorderSecondary: '#e5eaf3',
             colorTextSecondary: '#667085',
             borderRadius: 14,
             fontSize: 14,
+            controlItemBgHover: '#f5f9ff',
+            controlItemBgActive: '#eff6ff',
           },
           components: {
             Layout: {
@@ -88,6 +91,14 @@ export default function App() {
             },
             Select: {
               borderRadius: 10,
+            },
+            Pagination: {
+              itemActiveBg: '#eff6ff',
+              itemBg: '#ffffff',
+              itemSize: 32,
+            },
+            Modal: {
+              borderRadiusLG: 24,
             },
             Table: {
               headerBg: '#f8fafc',

@@ -75,6 +75,10 @@ export interface CreateMenuBody {
   specs?: MenuSpec[]
 }
 
+export interface UpdateMenuBody extends CreateMenuBody {
+  id: number
+}
+
 /** 创建菜品 */
 export async function createMenu(body: CreateMenuBody): Promise<void> {
   await api.post('/central/v1/menus', body)
@@ -87,7 +91,7 @@ export async function getMenu(id: number): Promise<{ menu: Menu }> {
 }
 
 /** 更新菜品：后端要整份 menu（含 id） */
-export async function updateMenu(id: number, menu: Menu): Promise<void> {
+export async function updateMenu(id: number, menu: UpdateMenuBody): Promise<void> {
   await api.put(`/central/v1/menu/${id}`, { menu })
 }
 

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Button, Card, Empty, Form, Popover, Radio, Space, Statistic, Tabs, Tag, Typography, message } from 'antd'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Alert, Button, Card, Empty, Form, InputNumber, Popover, Radio, Space, Statistic, Tabs, Tag, Typography, message } from 'antd'
 import { PlusOutlined, MinusOutlined, AudioOutlined, SoundOutlined } from '@ant-design/icons'
 import type { Menu, MenuCategory, MenuSpec, Table as TableType } from '../api/types'
 import { listMenuCategories, listMenus } from '../api/menu'
@@ -10,7 +10,6 @@ import { useTTS } from '../hooks/useTTS'
 import { matchMenuByText, parseOrderText } from '../utils/menuMatcher'
 import { useOrderCart } from '../contexts/OrderCartContext'
 
-/** 按 spec_type 分组，每组取第一个作为默认 */
 function defaultSpecs(specs: MenuSpec[]): MenuSpec[] {
   const byType = new Map<string, MenuSpec>()
   for (const s of specs) {
@@ -35,10 +34,8 @@ export default function OrderDesk() {
   const [orderType, setOrderType] = useState<string>('dine_in')
   const [tableId, setTableId] = useState<number | undefined>(undefined)
   const [submitting, setSubmitting] = useState(false)
-  /** 每个菜品卡片上的数量与选中规格：menuId -> { quantity, selectedSpecs } */
   const [cardSelections, setCardSelections] = useState<Record<number, { quantity: number; selectedSpecs: MenuSpec[] }>>({})
 
-  // 语音识别和语音播报
   const { isSupported: sttSupported, listening, transcript, start: startSTT, stop: stopSTT } = useSTT({
     lang: 'zh-CN',
     continuous: false,
@@ -91,35 +88,37 @@ export default function OrderDesk() {
 
   useEffect(() => {
     loadCategories()
-    loadTables() /* 进入点餐页即拉取桌号，默认堂食需要 */
+    loadTables()
   }, [loadCategories, loadTables])
 
   useEffect(() => {
     loadMenus()
   }, [loadMenus])
 
-  /** 选堂食时拉取桌号列表，确保有选项 */
   useEffect(() => {
     if (orderType === 'dine_in') {
       loadTables()
     }
   }, [orderType, loadTables])
 
-  const getSelection = useCallback((menu: Menu) => {
-    const raw = cardSelections[menu.id]
-    const defaults = menu.specs?.length ? defaultSpecs(menu.specs) : []
-    const byType = new Map(defaults.map((s) => [s.spec_type, s]))
-    raw?.selectedSpecs?.forEach((s) => byType.set(s.spec_type, s))
-    const selectedSpecs = Array.from(byType.values())
-    const quantity = raw?.quantity ?? 1
-    return { quantity, selectedSpecs }
-  }, [cardSelections])
+  const getSelection = useCallback(
+    (menu: Menu) => {
+      const raw = cardSelections[menu.id]
+      const defaults = menu.specs?.length ? defaultSpecs(menu.specs) : []
+      const byType = new Map(defaults.map((s) => [s.spec_type, s]))
+      raw?.selectedSpecs?.forEach((s) => byType.set(s.spec_type, s))
+      const selectedSpecs = Array.from(byType.values())
+      const quantity = raw?.quantity ?? 1
+      return { quantity, selectedSpecs }
+    },
+    [cardSelections]
+  )
 
   const setMenuQuantity = (menu: Menu, quantity: number) => {
     setCardSelections((prev) => ({
       ...prev,
       [menu.id]: {
-        quantity: Math.max(1, quantity),
+        quantity: Math.max(1, Math.min(99, quantity)),
         selectedSpecs: prev[menu.id]?.selectedSpecs ?? (menu.specs?.length ? defaultSpecs(menu.specs) : []),
       },
     }))
@@ -142,6 +141,7 @@ export default function OrderDesk() {
     const specInfo = selectedSpecs.length ? selectedSpecs.map((s) => `${s.spec_type}:${s.spec_value}`).join(' ') : undefined
     const unitPrice = menu.price + selectedSpecs.reduce((sum, s) => sum + (s.price_delta ?? 0), 0)
     const price = Math.round(unitPrice * 100) / 100
+
     setCart((prev) => {
       const exist = prev.find((i) => i.menuId === menu.id && (i.specInfo ?? '') === (specInfo ?? ''))
       if (exist) {
@@ -152,30 +152,23 @@ export default function OrderDesk() {
       return [...prev, { menuId: menu.id, name: menu.name, price, quantity: finalQuantity, specInfo, image: menu.image }]
     })
 
-    // 播报添加成功
     if (ttsSupported) {
-      const priceText = `价格${price}元`
-      speak(`已添加${finalQuantity}份${menu.name}，${priceText}`)
+      speak(`已添加${finalQuantity}份${menu.name}，价格${price}元`)
     }
   }
 
-  // 处理语音识别结果
   const processedTranscriptRef = useRef<string>('')
   useEffect(() => {
     if (!transcript || listening || menus.length === 0) return
-    // 避免重复处理同一个识别结果
     if (processedTranscriptRef.current === transcript) return
     processedTranscriptRef.current = transcript
 
-    // 识别完成，开始匹配菜单
     const { quantity, menuName } = parseOrderText(transcript)
     const matchedMenus = matchMenuByText(menuName, menus)
 
     if (matchedMenus.length > 0) {
       const matchedMenu = matchedMenus[0]
-      // 设置数量
       setMenuQuantity(matchedMenu, quantity)
-      // 添加到购物车
       const { selectedSpecs } = getSelection(matchedMenu)
       const specInfo = selectedSpecs.length ? selectedSpecs.map((s) => `${s.spec_type}:${s.spec_value}`).join(' ') : undefined
       const unitPrice = matchedMenu.price + selectedSpecs.reduce((sum, s) => sum + (s.price_delta ?? 0), 0)
@@ -190,7 +183,6 @@ export default function OrderDesk() {
         return [...prev, { menuId: matchedMenu.id, name: matchedMenu.name, price, quantity, specInfo, image: matchedMenu.image }]
       })
       message.success(`已添加 ${quantity} 份 ${matchedMenu.name}`)
-      // 播报添加成功
       if (ttsSupported) {
         speak(`已添加${quantity}份${matchedMenu.name}，价格${price}元`)
       }
@@ -202,7 +194,6 @@ export default function OrderDesk() {
     }
   }, [transcript, listening, menus, ttsSupported, speak, getSelection, setCart])
 
-  // 播报菜单信息
   const speakMenuInfo = (menu: Menu) => {
     if (!ttsSupported) return
     const { selectedSpecs } = getSelection(menu)
@@ -220,6 +211,7 @@ export default function OrderDesk() {
       message.warning('堂食订单请选择桌号')
       return
     }
+
     setSubmitting(true)
     try {
       await createOrder({
@@ -242,23 +234,12 @@ export default function OrderDesk() {
     }
   }
 
-  const tabItems = [
-    { key: 'all', label: '全部' },
-    ...categories.map((c) => ({ key: c.name, label: c.name })),
-  ]
+  const tabItems = [{ key: 'all', label: '全部' }, ...categories.map((c) => ({ key: c.name, label: c.name }))]
 
   return (
     <div className="order-desk-layout">
       <div className="order-desk-main">
-        <div className="page-toolbar">
-          <div>
-            <Typography.Title level={4} className="page-section-title">
-              点餐台
-            </Typography.Title>
-            <Typography.Text className="page-section-subtitle">
-              选择分类后快速点单，规格、数量和语音识别都会实时同步到右侧订单结算区。
-            </Typography.Text>
-          </div>
+        <div className="page-toolbar page-toolbar-actions-only">
           {sttSupported && (
             <Space>
               {listening ? (
@@ -289,27 +270,13 @@ export default function OrderDesk() {
         </div>
 
         <Card className="order-desk-filter-card">
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Space wrap size={[12, 12]}>
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Space wrap size={[8, 8]}>
               <Tag color="blue">分类 {categories.length}</Tag>
               <Tag color="purple">菜品 {menus.length}</Tag>
               <Tag color="gold">已选 {cartItemCount}</Tag>
             </Space>
-            <Tabs
-              className="order-desk-tabs"
-              activeKey={activeCategory}
-              onChange={setActiveCategory}
-              items={tabItems}
-            />
-            {sttSupported && (
-              <Alert
-                className="order-desk-status"
-                type={listening ? 'success' : 'info'}
-                showIcon
-                message={listening ? '语音识别中' : '语音点餐可用'}
-                description={listening ? transcript || '请继续说出菜品和数量' : '点击右上角按钮后，可直接说出菜名和份数。'}
-              />
-            )}
+            <Tabs className="order-desk-tabs" activeKey={activeCategory} onChange={setActiveCategory} items={tabItems} />
           </Space>
         </Card>
 
@@ -341,7 +308,7 @@ export default function OrderDesk() {
                           alt={menu.name}
                           src={menu.image}
                           onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none'
+                            ;(e.target as HTMLImageElement).style.display = 'none'
                           }}
                         />
                       ) : (
@@ -357,19 +324,13 @@ export default function OrderDesk() {
                           {menu.name}
                         </Typography.Title>
                         {menu.description ? (
-                          <Typography.Paragraph
-                            type="secondary"
-                            ellipsis={{ rows: 2, tooltip: menu.description }}
-                            style={{ margin: '4px 0 0' }}
-                          >
+                          <Typography.Paragraph type="secondary" ellipsis={{ rows: 2, tooltip: menu.description }} style={{ margin: '4px 0 0' }}>
                             {menu.description}
                           </Typography.Paragraph>
                         ) : null}
                       </div>
                       <Space size={4}>
-                        {ttsSupported && (
-                          <Button type="text" size="small" icon={<SoundOutlined />} onClick={() => speakMenuInfo(menu)} />
-                        )}
+                        {ttsSupported && <Button type="text" size="small" icon={<SoundOutlined />} onClick={() => speakMenuInfo(menu)} />}
                         <Tag color="red" style={{ marginInlineEnd: 0 }}>
                           ¥{unitPrice.toFixed(2)}
                         </Tag>
@@ -398,7 +359,15 @@ export default function OrderDesk() {
                           onClick={() => setMenuQuantity(menu, Math.max(1, quantity - 1))}
                           disabled={quantity <= 1}
                         />
-                        <strong style={{ minWidth: 28, textAlign: 'center' }}>{quantity}</strong>
+                        <InputNumber
+                          className="order-desk-qty-input"
+                          min={1}
+                          max={99}
+                          controls={false}
+                          size="small"
+                          value={quantity}
+                          onChange={(value) => setMenuQuantity(menu, Number(value) || 1)}
+                        />
                         <Button
                           type="text"
                           size="small"
@@ -414,10 +383,11 @@ export default function OrderDesk() {
                         const current = selectedSpecs.find((s) => s.spec_type === type)
                         return (
                           <div key={type} className="order-desk-spec-block">
-                            <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>
+                            <Typography.Text type="secondary" className="order-desk-spec-label">
                               {type}
                             </Typography.Text>
                             <Radio.Group
+                              className="order-desk-spec-group"
                               value={current?.spec_value}
                               onChange={(e) => {
                                 const spec = opts.find((o) => o.spec_value === e.target.value)
@@ -445,7 +415,7 @@ export default function OrderDesk() {
         )}
       </div>
 
-      <div className="order-desk-sidebar">
+      <div className="order-desk-summary-pane">
         <Card className="order-desk-summary-card">
           <Space direction="vertical" size={18} style={{ width: '100%' }}>
             <div className="page-toolbar" style={{ marginBottom: 0 }}>
@@ -469,18 +439,10 @@ export default function OrderDesk() {
 
             <Form layout="vertical">
               <Form.Item label="就餐方式" style={{ marginBottom: 12 }}>
-                <Radio.Group
-                  value={orderType}
-                  onChange={(e) => setOrderType(e.target.value)}
-                  optionType="button"
-                  options={ORDER_TYPE_OPTIONS}
-                />
+                <Radio.Group value={orderType} onChange={(e) => setOrderType(e.target.value)} optionType="button" options={ORDER_TYPE_OPTIONS} />
               </Form.Item>
               {orderType === 'dine_in' && (
-                <Form.Item
-                  label={`桌号${tablesLoading ? '（加载中）' : tables.length ? `（共 ${tables.length} 桌）` : ''}`}
-                  style={{ marginBottom: 0 }}
-                >
+                <Form.Item label={`桌号${tablesLoading ? '（加载中）' : tables.length ? `（共 ${tables.length} 桌）` : ''}`} style={{ marginBottom: 0 }}>
                   {tables.length === 0 && !tablesLoading ? (
                     <Alert type="warning" showIcon message="暂无餐桌，请先在餐桌管理中添加" />
                   ) : (
@@ -496,19 +458,15 @@ export default function OrderDesk() {
               )}
             </Form>
 
-            <Button
-              type="primary"
-              size="large"
-              block
-              onClick={handleSubmit}
-              loading={submitting}
-              disabled={cart.length === 0}
-            >
+            <Button type="primary" size="large" block onClick={handleSubmit} loading={submitting} disabled={cart.length === 0}>
               提交订单
             </Button>
           </Space>
         </Card>
 
+      </div>
+
+      <div className="order-desk-cart-pane">
         <Card className="order-desk-cart-card">
           <Space direction="vertical" size={14} style={{ width: '100%' }}>
             <div className="page-toolbar" style={{ marginBottom: 0 }}>
@@ -534,40 +492,26 @@ export default function OrderDesk() {
                           src={item.image}
                           alt={item.name}
                           onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none'
+                            ;(e.target as HTMLImageElement).style.display = 'none'
                           }}
                         />
                       ) : (
                         <div className="order-desk-cart-thumb-empty">无图</div>
                       )}
                     </div>
-                    <div style={{ minWidth: 0 }}>
-                      <Typography.Text strong>{item.name}</Typography.Text>
-                      {item.specInfo ? (
-                        <Typography.Paragraph
-                          type="secondary"
-                          ellipsis={{ rows: 1, tooltip: item.specInfo }}
-                          style={{ margin: '4px 0 0' }}
-                        >
-                          {item.specInfo}
-                        </Typography.Paragraph>
-                      ) : null}
-                      <Typography.Text style={{ color: '#f5222d' }}>¥{item.price.toFixed(2)}</Typography.Text>
+                    <div className="order-desk-cart-meta">
+                      <Typography.Text strong className="order-desk-cart-name">
+                        {item.name}
+                      </Typography.Text>
+                      <Typography.Text type="secondary" className="order-desk-cart-subline">
+                        {item.specInfo ? `${item.specInfo} · ` : ''}
+                        <span className="order-desk-cart-price">¥{item.price.toFixed(2)}</span>
+                      </Typography.Text>
                     </div>
-                    <Space size={4}>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<MinusOutlined />}
-                        onClick={() => updateCartQty(item.menuId, item.specInfo, -1)}
-                      />
-                      <strong style={{ minWidth: 24, textAlign: 'center' }}>{item.quantity}</strong>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<PlusOutlined />}
-                        onClick={() => updateCartQty(item.menuId, item.specInfo, 1)}
-                      />
+                    <Space size={2} className="order-desk-cart-actions">
+                      <Button type="text" size="small" icon={<MinusOutlined />} onClick={() => updateCartQty(item.menuId, item.specInfo, -1)} />
+                      <strong className="order-desk-cart-qty">{item.quantity}</strong>
+                      <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => updateCartQty(item.menuId, item.specInfo, 1)} />
                     </Space>
                   </div>
                 ))}
