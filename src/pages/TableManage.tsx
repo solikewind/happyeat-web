@@ -33,6 +33,8 @@ import {
   deleteTable,
 } from '../api/table'
 
+const asArray = <T,>(value: T[] | undefined | null) => (Array.isArray(value) ? value : [])
+
 const TABLE_STATUS = { idle: '空闲', using: '使用中', reserved: '预留', cleaning: '清洁中' } as const
 
 function CategoryTab() {
@@ -48,8 +50,8 @@ function CategoryTab() {
     setLoading(true)
     try {
       const res = await listTableCategories({ current: page, pageSize: 10 })
-      setList(res.categories)
-      setTotal(res.total)
+      setList(asArray(res?.categories))
+      setTotal(Number(res?.total) || 0)
     } catch {
       message.error('加载失败')
     } finally {
@@ -205,7 +207,7 @@ function TableListTab() {
 
   const loadCategories = useCallback(async () => {
     const res = await listTableCategories({ current: 1, pageSize: 200 })
-    setCategories(res.categories)
+    setCategories(asArray(res?.categories))
   }, [])
 
   const loadTables = useCallback(async () => {

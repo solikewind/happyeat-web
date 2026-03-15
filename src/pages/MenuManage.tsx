@@ -32,6 +32,8 @@ import {
   getMenu,
 } from '../api/menu'
 
+const asArray = <T,>(value: T[] | undefined | null) => (Array.isArray(value) ? value : [])
+
 // ============ 第一 Tab：菜单分类 ============
 
 function CategoryTab() {
@@ -50,8 +52,8 @@ function CategoryTab() {
     setLoading(true)
     try {
       const res = await listMenuCategories({ current: page, pageSize })
-      setList(res.categories)
-      setTotal(res.total)
+      setList(asArray(res?.categories))
+      setTotal(Number(res?.total) || 0)
     } catch {
       message.error('加载分类列表失败')
     } finally {
@@ -237,7 +239,7 @@ function MenuListTab() {
 
   const loadCategories = useCallback(async () => {
     const res = await listMenuCategories({ current: 1, pageSize: 200 })
-    setCategories(res.categories)
+    setCategories(asArray(res?.categories))
   }, [])
 
   const loadMenus = useCallback(async () => {
@@ -249,8 +251,8 @@ function MenuListTab() {
         category: categoryFilter,
         name: nameSearch,
       })
-      setMenus(res.menus)
-      setTotal(res.total)
+      setMenus(asArray(res?.menus))
+      setTotal(Number(res?.total) || 0)
     } catch {
       message.error('加载菜品列表失败')
     } finally {
