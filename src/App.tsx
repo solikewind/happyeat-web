@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ConfigProvider, Spin, theme as antdTheme } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ThemeProvider, useThemeMode } from './contexts/ThemeContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import './App.css'
 
@@ -57,27 +58,37 @@ function AppRoutes() {
 
 export default function App() {
   return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
+  )
+}
+
+function AppShell() {
+  const { isDark } = useThemeMode()
+
+  return (
     <ErrorBoundary>
       <ConfigProvider
         locale={zhCN}
         theme={{
-          algorithm: antdTheme.defaultAlgorithm,
+          algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
           token: {
-            colorPrimary: '#1677ff',
-            colorBgLayout: '#f4f7fb',
-            colorBgContainer: '#ffffff',
-            colorBorderSecondary: '#e5eaf3',
-            colorTextSecondary: '#667085',
+            colorPrimary: isDark ? '#60a5fa' : '#1677ff',
+            colorBgLayout: isDark ? '#0f1115' : '#f4f7fb',
+            colorBgContainer: isDark ? '#151922' : '#ffffff',
+            colorBorderSecondary: isDark ? '#2b3342' : '#e5eaf3',
+            colorTextSecondary: isDark ? '#9aa4b2' : '#667085',
             borderRadius: 14,
             fontSize: 14,
-            controlItemBgHover: '#f5f9ff',
-            controlItemBgActive: '#eff6ff',
+            controlItemBgHover: isDark ? '#1c2534' : '#f5f9ff',
+            controlItemBgActive: isDark ? '#243144' : '#eff6ff',
           },
           components: {
             Layout: {
-              headerBg: '#ffffff',
-              siderBg: '#0f172a',
-              bodyBg: '#f4f7fb',
+              headerBg: isDark ? '#151922' : '#ffffff',
+              siderBg: isDark ? '#11151c' : '#f7f8fa',
+              bodyBg: isDark ? '#0f1115' : '#f4f7fb',
             },
             Card: {
               borderRadiusLG: 18,
@@ -93,24 +104,24 @@ export default function App() {
               borderRadius: 10,
             },
             Pagination: {
-              itemActiveBg: '#eff6ff',
-              itemBg: '#ffffff',
+              itemActiveBg: isDark ? '#243144' : '#eff6ff',
+              itemBg: isDark ? '#151922' : '#ffffff',
               itemSize: 32,
             },
             Modal: {
               borderRadiusLG: 24,
             },
             Table: {
-              headerBg: '#f8fafc',
-              headerColor: '#344054',
-              rowHoverBg: '#f5f9ff',
-              borderColor: '#e4e7ec',
+              headerBg: isDark ? '#1b2430' : '#f8fafc',
+              headerColor: isDark ? '#dbe2ee' : '#344054',
+              rowHoverBg: isDark ? '#1a2331' : '#f5f9ff',
+              borderColor: isDark ? '#2b3342' : '#e4e7ec',
             },
             Tabs: {
-              itemColor: '#667085',
-              itemSelectedColor: '#1677ff',
-              itemHoverColor: '#1677ff',
-              inkBarColor: '#1677ff',
+              itemColor: isDark ? '#9aa4b2' : '#667085',
+              itemSelectedColor: isDark ? '#93c5fd' : '#1677ff',
+              itemHoverColor: isDark ? '#93c5fd' : '#1677ff',
+              inkBarColor: isDark ? '#93c5fd' : '#1677ff',
             },
             Tag: {
               borderRadiusSM: 8,

@@ -1,9 +1,7 @@
-/**
- * 语音识别工具函数（Speech-to-Text）
- * 使用浏览器原生的 Web Speech API
+﻿/**
+ * Speech-to-Text helpers based on Web Speech API.
  */
 
-// Web Speech API 类型定义
 interface SpeechRecognitionEvent extends Event {
   readonly resultIndex: number
   readonly results: SpeechRecognitionResultList
@@ -14,69 +12,64 @@ interface SpeechRecognitionErrorEvent extends Event {
   readonly message: string
 }
 
+interface SpeechRecognitionLike {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  maxAlternatives: number
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+  abort: () => void
+}
+
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike
+
 export interface STTOptions {
-  /** 语言代码，如 'zh-CN', 'en-US' */
   lang?: string
-  /** 是否连续识别（默认 false，识别一次后停止） */
   continuous?: boolean
-  /** 是否显示临时结果（默认 false） */
   interimResults?: boolean
-  /** 最大识别时长（毫秒，默认 60000） */
   maxDuration?: number
 }
 
 export interface STTResult {
-  /** 识别的文本 */
   text: string
-  /** 是否完成（false 表示临时结果） */
   isFinal: boolean
-  /** 置信度（0-1） */
   confidence?: number
 }
 
-/**
- * 检查浏览器是否支持语音识别
- */
 export function isSTTSupported(): boolean {
-  return (
-    'webkitSpeechRecognition' in window ||
-    'SpeechRecognition' in window ||
-    // @ts-ignore
-    'SpeechRecognition' in window
-  )
+  return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
 }
 
-/**
- * 获取 SpeechRecognition 类
- */
-function getSpeechRecognition(): typeof SpeechRecognition | null {
+function getSpeechRecognition(): SpeechRecognitionCtor | null {
   if (typeof window === 'undefined') return null
-
   // @ts-ignore
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-  return SpeechRecognition || null
+  const SpeechRecognitionCtor = (window as unknown as { SpeechRecognition?: SpeechRecognitionCtor; webkitSpeechRecognition?: SpeechRecognitionCtor }).SpeechRecognition ||
+    (window as unknown as { SpeechRecognition?: SpeechRecognitionCtor; webkitSpeechRecognition?: SpeechRecognitionCtor }).webkitSpeechRecognition
+  return SpeechRecognitionCtor || null
 }
 
-/**
- * 语音识别
- * @param options 配置选项
- * @param onResult 识别结果回调
- * @returns 返回控制对象 { start, stop, abort }
- */
 export function recognize(
   options: STTOptions = {},
-  onResult: (result: STTResult) => void
+  onResult: (result: STTResult) => void,
+  callbacks?: {
+    onEnd?: () => void
+    onError?: (error: string) => void
+  }
 ): {
   start: () => void
   stop: () => void
   abort: () => void
 } {
-  const SpeechRecognition = getSpeechRecognition()
-  if (!SpeechRecognition) {
-    throw new Error('浏览器不支持语音识别')
+  const SpeechRecognitionCtor = getSpeechRecognition()
+  if (!SpeechRecognitionCtor) {
+    throw new Error('Browser does not support speech recognition')
   }
 
-  const recognition = new SpeechRecognition()
+  const recognition = new SpeechRecognitionCtor()
   recognition.lang = options.lang || 'zh-CN'
   recognition.continuous = options.continuous ?? false
   recognition.interimResults = options.interimResults ?? false
@@ -98,7 +91,8 @@ export function recognize(
   }
 
   recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-    console.error('语音识别错误:', event.error)
+    console.error('Speech recognition error:', event.error)
+    callbacks?.onError?.(event.error)
   }
 
   recognition.onend = () => {
@@ -106,19 +100,19 @@ export function recognize(
       clearTimeout(timeoutId)
       timeoutId = null
     }
+    callbacks?.onEnd?.()
   }
 
   const start = () => {
     try {
       recognition.start()
-      // 设置最大时长
       if (maxDuration > 0) {
         timeoutId = setTimeout(() => {
           recognition.stop()
         }, maxDuration)
       }
     } catch (error) {
-      console.error('启动语音识别失败:', error)
+      console.error('Failed to start speech recognition:', error)
     }
   }
 
@@ -141,15 +135,10 @@ export function recognize(
   return { start, stop, abort }
 }
 
-/**
- * 语音识别（Promise 版本，识别一次）
- * @param options 配置选项
- * @returns Promise，返回识别的文本
- */
 export function recognizeOnce(options: STTOptions = {}): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!isSTTSupported()) {
-      reject(new Error('浏览器不支持语音识别'))
+      reject(new Error('Browser does not support speech recognition'))
       return
     }
 
@@ -163,19 +152,16 @@ export function recognizeOnce(options: STTOptions = {}): Promise<string> {
       }
     )
 
-    // 设置超时
     const timeout = setTimeout(() => {
       abort()
-      reject(new Error('语音识别超时'))
+      reject(new Error('Speech recognition timeout'))
     }, options.maxDuration || 10000)
 
     start()
 
-    // 监听结束事件
-    const SpeechRecognition = getSpeechRecognition()
-    if (SpeechRecognition) {
-      // 通过临时创建实例来监听全局事件
-      const tempRec = new SpeechRecognition()
+    const SpeechRecognitionCtor = getSpeechRecognition()
+    if (SpeechRecognitionCtor) {
+      const tempRec = new SpeechRecognitionCtor()
       tempRec.onend = () => {
         clearTimeout(timeout)
       }

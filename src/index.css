@@ -11,6 +11,13 @@
   -webkit-font-smoothing: antialiased;
 }
 
+[data-theme='dark'] {
+  --app-bg-top: #0f1115;
+  --app-bg-bottom: #121721;
+  --app-text: #e5e7eb;
+  --app-sider-bg: #11151c;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -47,8 +54,49 @@ a {
   color: #fff !important;
 }
 
+.ant-layout-sider .ant-menu-light .ant-menu-item-selected:hover,
+.ant-layout-sider .ant-menu-light .ant-menu-item-selected:active {
+  background: linear-gradient(135deg, #111827, #1f2937) !important;
+  color: #fff !important;
+}
+
+.ant-layout-sider .ant-menu-light .ant-menu-item-selected a {
+  color: #fff !important;
+}
+
 .ant-layout-sider .ant-menu-light .ant-menu-item:hover {
   background: rgba(17, 24, 39, 0.06) !important;
+}
+
+[data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-item,
+[data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-submenu-title {
+  color: #c7cfdb !important;
+}
+
+[data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-item:hover {
+  background: rgba(148, 163, 184, 0.16) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-item-selected,
+[data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-item-selected:hover,
+[data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-item-selected:active {
+  background: linear-gradient(135deg, #374151, #1f2937) !important;
+  color: #ffffff !important;
+}
+
+.ant-layout-sider .ant-menu-light .ant-menu-item.ant-menu-item-selected,
+.ant-layout-sider .ant-menu-light .ant-menu-item.ant-menu-item-selected:hover,
+.ant-layout-sider .ant-menu-light .ant-menu-item.ant-menu-item-selected:active {
+  background: linear-gradient(135deg, #111827, #1f2937) !important;
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-item.ant-menu-item-selected,
+[data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-item.ant-menu-item-selected:hover,
+[data-theme='dark'] .ant-layout-sider .ant-menu-light .ant-menu-item.ant-menu-item-selected:active {
+  background: linear-gradient(135deg, #374151, #1f2937) !important;
+  color: #ffffff !important;
 }
 
 .ant-card,

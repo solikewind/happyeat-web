@@ -36,9 +36,9 @@ export default function OrderDesk() {
   const [submitting, setSubmitting] = useState(false)
   const [cardSelections, setCardSelections] = useState<Record<number, { quantity: number; selectedSpecs: MenuSpec[] }>>({})
 
-  const { isSupported: sttSupported, listening, transcript, start: startSTT, stop: stopSTT } = useSTT({
+  const { isSupported: sttSupported, listening, transcript, finalTranscript, start: startSTT, stop: stopSTT } = useSTT({
     lang: 'zh-CN',
-    continuous: false,
+    continuous: true,
     interimResults: true,
   })
   const { speak, isSupported: ttsSupported } = useTTS({ lang: 'zh-CN', rate: 1.2 })
@@ -159,11 +159,11 @@ export default function OrderDesk() {
 
   const processedTranscriptRef = useRef<string>('')
   useEffect(() => {
-    if (!transcript || listening || menus.length === 0) return
-    if (processedTranscriptRef.current === transcript) return
-    processedTranscriptRef.current = transcript
+    if (!finalTranscript || menus.length === 0) return
+    if (processedTranscriptRef.current === finalTranscript) return
+    processedTranscriptRef.current = finalTranscript
 
-    const { quantity, menuName } = parseOrderText(transcript)
+    const { quantity, menuName } = parseOrderText(finalTranscript)
     const matchedMenus = matchMenuByText(menuName, menus)
 
     if (matchedMenus.length > 0) {
@@ -192,7 +192,7 @@ export default function OrderDesk() {
         speak(`抱歉，未找到${menuName}`)
       }
     }
-  }, [transcript, listening, menus, ttsSupported, speak, getSelection, setCart])
+  }, [finalTranscript, menus, ttsSupported, speak, getSelection, setCart])
 
   const speakMenuInfo = (menu: Menu) => {
     if (!ttsSupported) return

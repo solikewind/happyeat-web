@@ -1,17 +1,20 @@
 ﻿import { Link, Outlet, useLocation } from 'react-router-dom'
-import { Avatar, Breadcrumb, Dropdown, Layout, Menu, Space, Typography } from 'antd'
+import { Avatar, Breadcrumb, Button, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
 import {
   DashboardOutlined,
   HomeOutlined,
   LogoutOutlined,
   MenuOutlined,
+  MoonOutlined,
   ShoppingCartOutlined,
   ShoppingOutlined,
+  SunOutlined,
   TableOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 import { useAuth } from '../contexts/AuthContext'
 import { OrderCartProvider } from '../contexts/OrderCartContext'
+import { useThemeMode } from '../contexts/ThemeContext'
 
 const { Header, Sider, Content } = Layout
 
@@ -29,6 +32,7 @@ const pageMeta = Object.fromEntries(navItems.map((item) => [item.key, item]))
 export default function MainLayout() {
   const location = useLocation()
   const { logout } = useAuth()
+  const { isDark, toggleTheme } = useThemeMode()
   const currentPage = pageMeta[location.pathname] ?? pageMeta['/']
   const selectedKey = navItems.find((item) => item.key === location.pathname)?.key ?? '/'
 
@@ -79,15 +83,20 @@ export default function MainLayout() {
               </Typography.Title>
               <Typography.Text className="app-page-description">{currentPage.description}</Typography.Text>
             </div>
-            <Dropdown menu={userMenu} placement="bottomRight">
-              <Space className="app-user-entry">
-                <Avatar size={36} icon={<UserOutlined />} />
-                <span>
-                  <strong>管理员</strong>
-                  <span className="app-user-role">系统账户</span>
-                </span>
-              </Space>
-            </Dropdown>
+            <Space size={10}>
+              <Tooltip title={isDark ? '切换到日间模式' : '切换到夜间模式'}>
+                <Button className="app-theme-toggle" icon={isDark ? <SunOutlined /> : <MoonOutlined />} onClick={toggleTheme} />
+              </Tooltip>
+              <Dropdown menu={userMenu} placement="bottomRight">
+                <Space className="app-user-entry">
+                  <Avatar size={36} icon={<UserOutlined />} />
+                  <span>
+                    <strong>管理员</strong>
+                    <span className="app-user-role">系统账户</span>
+                  </span>
+                </Space>
+              </Dropdown>
+            </Space>
           </Header>
 
           <Content className="app-content">
