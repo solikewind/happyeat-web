@@ -8,6 +8,11 @@ export interface CreateOrderItem {
   spec_info?: string
 }
 
+const normalizeOrderList = (data: { orders?: Order[]; total?: number } | undefined) => ({
+  orders: Array.isArray(data?.orders) ? data.orders : [],
+  total: Number(data?.total) || 0,
+})
+
 export async function listOrders(params?: {
   current?: number
   pageSize?: number
@@ -16,7 +21,7 @@ export async function listOrders(params?: {
   table_id?: number
 }) {
   const { data } = await api.get<{ orders: Order[]; total: number }>('/central/v1/orders', { params })
-  return data
+  return normalizeOrderList(data)
 }
 
 export async function getOrder(id: number) {
@@ -41,5 +46,5 @@ export async function updateOrderStatus(id: number, status: string) {
 
 export async function listWorkbenchOrders(params?: { current?: number; pageSize?: number; status?: string }) {
   const { data } = await api.get<{ orders: Order[]; total: number }>('/central/v1/workbench/orders', { params })
-  return data
+  return normalizeOrderList(data)
 }
