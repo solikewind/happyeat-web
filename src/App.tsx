@@ -1,45 +1,57 @@
+import { Suspense, lazy, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { ConfigProvider, theme as antdTheme } from 'antd'
+import { ConfigProvider, Spin, theme as antdTheme } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import MainLayout from './layouts/MainLayout'
-import Login from './pages/Login'
-import Home from './pages/Home'
-import MenuManage from './pages/MenuManage'
-import TableManage from './pages/TableManage'
-import OrderManage from './pages/OrderManage'
-import OrderDesk from './pages/OrderDesk'
-import Workbench from './pages/Workbench'
 import './App.css'
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+const MainLayout = lazy(() => import('./layouts/MainLayout'))
+const Login = lazy(() => import('./pages/Login'))
+const Home = lazy(() => import('./pages/Home'))
+const MenuManage = lazy(() => import('./pages/MenuManage'))
+const TableManage = lazy(() => import('./pages/TableManage'))
+const OrderManage = lazy(() => import('./pages/OrderManage'))
+const OrderDesk = lazy(() => import('./pages/OrderDesk'))
+const Workbench = lazy(() => import('./pages/Workbench'))
+
+function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAuth()
   if (!isLoggedIn) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
+function PageLoading() {
+  return (
+    <div className="app-page-loading">
+      <Spin size="large" />
+    </div>
+  )
+}
+
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Home />} />
-        <Route path="menu" element={<MenuManage />} />
-        <Route path="tables" element={<TableManage />} />
-        <Route path="orders" element={<OrderManage />} />
-        <Route path="order-desk" element={<OrderDesk />} />
-        <Route path="workbench" element={<Workbench />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Suspense fallback={<PageLoading />}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Home />} />
+          <Route path="menu" element={<MenuManage />} />
+          <Route path="tables" element={<TableManage />} />
+          <Route path="orders" element={<OrderManage />} />
+          <Route path="order-desk" element={<OrderDesk />} />
+          <Route path="workbench" element={<Workbench />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   )
 }
 
@@ -79,6 +91,18 @@ export default function App() {
             },
             Table: {
               headerBg: '#f8fafc',
+              headerColor: '#344054',
+              rowHoverBg: '#f5f9ff',
+              borderColor: '#e4e7ec',
+            },
+            Tabs: {
+              itemColor: '#667085',
+              itemSelectedColor: '#1677ff',
+              itemHoverColor: '#1677ff',
+              inkBarColor: '#1677ff',
+            },
+            Tag: {
+              borderRadiusSM: 8,
             },
           },
         }}

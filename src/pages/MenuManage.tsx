@@ -162,7 +162,7 @@ function CategoryTab() {
             },
             {
               title: '操作',
-              width: 140,
+              width: 156,
               render: (_, record) => (
                 <Space>
                   <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>
@@ -448,7 +448,7 @@ function MenuListTab() {
             { title: '描述', dataIndex: 'description', ellipsis: true, render: (value?: string) => value || '-' },
             {
               title: '操作',
-              width: 140,
+              width: 156,
               render: (_, record) => (
                 <Space>
                   <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>

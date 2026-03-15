@@ -1,5 +1,10 @@
 :root {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --app-bg-top: #f7fbff;
+  --app-bg-bottom: #edf4ff;
+  --app-text: #101828;
+  --app-sider-bg: #0f172a;
+  --app-font-sans: 'Plus Jakarta Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: var(--app-font-sans);
   line-height: 1.5;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,8 +18,11 @@
 body {
   margin: 0;
   min-height: 100vh;
-  color: #101828;
-  background: #f4f7fb;
+  color: var(--app-text);
+  background:
+    radial-gradient(circle at 12% -10%, rgba(56, 189, 248, 0.16), transparent 26%),
+    radial-gradient(circle at 88% 110%, rgba(29, 78, 216, 0.12), transparent 24%),
+    linear-gradient(180deg, var(--app-bg-top) 0%, var(--app-bg-bottom) 100%);
 }
 
 a {
@@ -26,7 +34,7 @@ a {
 .ant-layout-sider .ant-layout-sider-children,
 .ant-layout-sider .ant-menu.ant-menu-dark,
 .ant-layout-sider .ant-menu-dark.ant-menu-inline {
-  background: #0f172a !important;
+  background: var(--app-sider-bg) !important;
 }
 
 .ant-layout-sider .ant-menu-dark .ant-menu-item,

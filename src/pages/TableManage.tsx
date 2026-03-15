@@ -150,7 +150,7 @@ function CategoryTab() {
             },
             {
               title: '操作',
-              width: 120,
+              width: 156,
               render: (_, r) => (
                 <Space>
                   <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(r)}>编辑</Button>
@@ -357,7 +357,7 @@ function TableListTab() {
             { title: '分类', dataIndex: 'category_id', width: 120, render: (id: number) => <Tag>{categoryMap[id] ?? id}</Tag> },
             {
               title: '操作',
-              width: 120,
+              width: 156,
               render: (_: unknown, r: TableType) => (
                 <Space>
                   <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(r)}>编辑</Button>
