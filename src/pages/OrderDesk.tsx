@@ -337,18 +337,6 @@ export default function OrderDesk() {
                       </Space>
                     </div>
 
-                    <div className="order-desk-menu-tags">
-                      {selectedSpecs.length > 0 ? (
-                        selectedSpecs.map((spec) => (
-                          <Tag key={`${menu.id}-${spec.spec_type}-${spec.spec_value}`} color="processing">
-                            {spec.spec_type}: {spec.spec_value}
-                          </Tag>
-                        ))
-                      ) : (
-                        <Tag>默认规格</Tag>
-                      )}
-                    </div>
-
                     <div className="order-desk-qty-box">
                       <Typography.Text type="secondary">选择数量</Typography.Text>
                       <Space size={4}>

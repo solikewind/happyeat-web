@@ -1,10 +1,14 @@
-import { useEffect, useState, useCallback } from 'react'
-import { Button, Card, Col, Row, Select, Statistic, Table, Tag, Typography, message } from 'antd'
-import { CheckOutlined } from '@ant-design/icons'
+﻿import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Button, Card, Empty, Pagination, Select, Space, Tag, Typography, message } from 'antd'
+import { CheckOutlined, ClockCircleOutlined } from '@ant-design/icons'
 import type { Order } from '../api/types'
 import { listWorkbenchOrders, updateOrderStatus } from '../api/order'
 
-const ORDER_TYPE_MAP: Record<string, string> = { dine_in: '堂食', takeaway: '打包' }
+const ORDER_TYPE_MAP: Record<string, string> = {
+  dine_in: '堂食',
+  takeaway: '打包外带',
+}
+
 const STATUS_MAP: Record<string, string> = {
   created: '待支付',
   paid: '已支付',
@@ -12,6 +16,14 @@ const STATUS_MAP: Record<string, string> = {
   completed: '已完成',
   cancelled: '已取消',
 }
+
+const asText = (value: unknown, fallback = '-') => {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return fallback
+}
+
+const asNumber = (value: unknown) => (typeof value === 'number' ? value : Number(value) || 0)
 
 export default function Workbench() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -23,11 +35,11 @@ export default function Workbench() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await listWorkbenchOrders({ current: page, pageSize: 10, status: statusFilter })
-      setOrders(res.orders)
-      setTotal(res.total)
+      const res = await listWorkbenchOrders({ current: page, pageSize: 12, status: statusFilter })
+      setOrders(Array.isArray(res?.orders) ? res.orders : [])
+      setTotal(Number(res?.total) || 0)
     } catch {
-      message.error('加载失败')
+      message.error('加载工作台订单失败')
     } finally {
       setLoading(false)
     }
@@ -40,131 +52,150 @@ export default function Workbench() {
   const handleComplete = async (id: number) => {
     try {
       await updateOrderStatus(id, 'completed')
-      message.success('已标记为出单完成')
+      message.success('订单已标记为完成')
       load()
     } catch {
-      message.error('操作失败')
+      message.error('更新订单状态失败')
     }
   }
 
+  const preparingCount = useMemo(() => orders.filter((item) => item.status === 'preparing').length, [orders])
+  const pageAmount = useMemo(() => orders.reduce((sum, item) => sum + asNumber(item.total_amount), 0), [orders])
+
   return (
     <div className="manage-shell">
-      <Card className="workbench-hero-card">
-        <div className="workbench-hero-grid">
-          <div>
-            <Typography.Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
-              工作台
-            </Typography.Title>
-            <Typography.Text type="secondary">
-              聚合待处理订单，面向后厨或前台快速完成出单。重点关注待支付、已支付和制作中的订单。
-            </Typography.Text>
-          </div>
-          <div className="manage-highlight-list">
-            <div className="manage-highlight-item">
-              <Typography.Text type="secondary">操作说明</Typography.Text>
-              <Typography.Title level={5} style={{ margin: '6px 0 0' }}>
-                点击“出单”后会将订单状态更新为已完成
-              </Typography.Title>
-            </div>
-          </div>
+      <Card className="manage-panel-card">
+        <div className="manage-summary-strip">
+          <Tag color="blue" className="manage-summary-pill">
+            待处理总数 {total}
+          </Tag>
+          <Tag color="gold" className="manage-summary-pill">
+            本页制作中 {preparingCount}
+          </Tag>
+          <Tag color="geekblue" className="manage-summary-pill">
+            本页金额 ¥{pageAmount.toFixed(2)}
+          </Tag>
         </div>
       </Card>
-
-      <Row gutter={[16, 16]}>
-        <Col xs={24} md={8}>
-          <Card className="manage-stat-card">
-            <Statistic title="待处理总数" value={total} suffix="单" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card className="manage-stat-card">
-            <Statistic title="当前页制作中" value={orders.filter((item) => item.status === 'preparing').length} suffix="单" />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card className="manage-stat-card">
-            <Statistic title="当前页金额" value={orders.reduce((sum, item) => sum + (item.total_amount || 0), 0)} precision={2} prefix="¥" />
-          </Card>
-        </Col>
-      </Row>
 
       <Card className="manage-panel-card">
         <div className="manage-filter-bar">
           <div className="manage-filter-group">
             <Select
-              style={{ width: 160 }}
-              placeholder="全部状态"
               allowClear
+              style={{ minWidth: 180 }}
+              placeholder="按状态筛选"
               value={statusFilter}
               onChange={(value) => {
                 setStatusFilter(value)
                 setPage(1)
               }}
-              options={[
-                { label: '全部', value: undefined },
-                ...Object.entries(STATUS_MAP).map(([k, v]) => ({ label: v, value: k })),
-              ]}
+              options={Object.entries(STATUS_MAP).map(([value, label]) => ({ value, label }))}
             />
           </div>
+          <Tag color="orange" className="manage-summary-pill">
+            优先处理 已支付 / 制作中
+          </Tag>
         </div>
       </Card>
 
-      <Card className="workbench-table-card">
-        <Table
-          rowKey="id"
-          loading={loading}
-          dataSource={orders}
-          columns={[
-            { title: '订单号', dataIndex: 'order_no', width: 160 },
-            { title: '类型', dataIndex: 'order_type', width: 90, render: (t: string) => <Tag color={t === 'dine_in' ? 'blue' : 'orange'}>{ORDER_TYPE_MAP[t] ?? t}</Tag> },
-            { title: '状态', dataIndex: 'status', width: 100, render: (s: string) => <Tag color={s === 'preparing' ? 'processing' : 'gold'}>{STATUS_MAP[s] ?? s}</Tag> },
-            {
-              title: '创建日期',
-              dataIndex: 'create_at',
-              width: 180,
-              render: (ts: number | undefined) => (ts ? new Date(ts * 1000).toLocaleString('zh-CN') : '-'),
-            },
-            {
-              title: '桌号',
-              dataIndex: 'table_code',
-              width: 120,
-              render: (code: string, record: Order) => {
-                if (!code) return '-'
-                const category = record.table_category
-                return <Tag color="cyan">{category ? `${category}-${code}` : code}</Tag>
-              },
-            },
-            { title: '金额', dataIndex: 'total_amount', width: 100, render: (v: number) => <Tag color="red">¥{v?.toFixed(2) ?? '0.00'}</Tag> },
-            {
-              title: '明细',
-              dataIndex: 'items',
-              render: (items: Order['items']) =>
-                items?.length
-                  ? items.map((i, idx) => (
-                      <div key={idx}>{i.menu_name} x{i.quantity} ¥{i.amount?.toFixed(2)}</div>
-                    ))
-                  : '-',
-            },
-            {
-              title: '操作',
-              width: 100,
-              render: (_, r: Order) =>
-                r.status !== 'completed' && r.status !== 'cancelled' ? (
-                  <Button type="primary" size="small" icon={<CheckOutlined />} onClick={() => handleComplete(r.id)}>
-                    出单
-                  </Button>
-                ) : (
-                  <Tag color="green">已完成</Tag>
-                ),
-            },
-          ]}
-          pagination={{
-            current: page,
-            pageSize: 10,
-            total,
-            showTotal: (t) => `共 ${t} 条`,
-            onChange: setPage,
-          }}
+      <div className="workbench-card-grid">
+        {orders.length === 0 && !loading ? (
+          <Card className="workbench-table-card">
+            <Empty description="暂无待处理订单" />
+          </Card>
+        ) : (
+          orders.map((order) => (
+            <Card key={order.id} loading={loading} className="workbench-order-card">
+              <Space direction="vertical" size={14} style={{ width: '100%' }}>
+                <div className="workbench-order-topline">
+                  <div>
+                    <Typography.Text type="secondary">订单号</Typography.Text>
+                    <Typography.Title level={5} style={{ margin: '4px 0 0' }}>
+                      {asText(order.order_no)}
+                    </Typography.Title>
+                  </div>
+                  <div className="workbench-order-headside">
+                    <div className="workbench-amount-chip">
+                      <span className="workbench-amount-currency">¥</span>
+                      <span className="workbench-amount-value">{asNumber(order.total_amount).toFixed(2)}</span>
+                    </div>
+                    <div className="workbench-status-strip">
+                      <span className={`workbench-status-pill ${order.order_type === 'dine_in' ? 'is-dine-in' : 'is-takeaway'}`}>
+                        {ORDER_TYPE_MAP[asText(order.order_type, '')] ?? asText(order.order_type)}
+                      </span>
+                      <span
+                        className={`workbench-status-pill workbench-status-pill-state is-${asText(order.status, 'unknown')}`}
+                      >
+                        {STATUS_MAP[asText(order.status, '')] ?? asText(order.status)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="workbench-order-meta-row">
+                  <div className="workbench-meta-chip">
+                    <ClockCircleOutlined />
+                    <span>
+                      {asNumber(order.create_at)
+                        ? new Date(asNumber(order.create_at) * 1000).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                        : '--:--'}
+                    </span>
+                  </div>
+                  <div
+                    className={`workbench-meta-chip workbench-meta-chip-location ${
+                      order.table_code ? 'is-dine-in' : 'is-takeaway'
+                    }`}
+                  >
+                    <span className="workbench-location-text">
+                      {order.table_code
+                        ? `${order.table_category ? `${asText(order.table_category, '')}-` : ''}${asText(order.table_code)}`
+                        : '外带订单'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="workbench-order-items">
+                  {(Array.isArray(order.items) ? order.items : []).map((item, index) => (
+                    <div key={`${order.id}-${asText(item.menu_name, 'item')}-${index}`} className="workbench-order-item">
+                      <div>
+                        <Typography.Text strong>{asText(item.menu_name)}</Typography.Text>
+                        <Typography.Text type="secondary" className="workbench-order-item-note">
+                          {asText(item.spec_info, '默认规格')}
+                        </Typography.Text>
+                      </div>
+                      <div className="workbench-order-item-side">
+                        <Typography.Text>x{asNumber(item.quantity)}</Typography.Text>
+                        <Typography.Text type="secondary">¥{asNumber(item.amount).toFixed(2)}</Typography.Text>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="workbench-order-footer">
+                  <Typography.Text type="secondary">备注：{asText(order.remark, '无')}</Typography.Text>
+                  {order.status !== 'completed' && order.status !== 'cancelled' ? (
+                    <Button type="primary" icon={<CheckOutlined />} onClick={() => handleComplete(order.id)}>
+                      出单完成
+                    </Button>
+                  ) : (
+                    <Tag color="success">已完成</Tag>
+                  )}
+                </div>
+              </Space>
+            </Card>
+          ))
+        )}
+      </div>
+
+      <Card className="manage-panel-card">
+        <Pagination
+          current={page}
+          pageSize={12}
+          total={total}
+          showSizeChanger={false}
+          showTotal={(count) => `共 ${count} 条`}
+          onChange={setPage}
         />
       </Card>
     </div>

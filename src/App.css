@@ -918,6 +918,195 @@
   padding-top: 4px;
 }
 
+.workbench-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.workbench-order-card {
+  border: 1px solid #e5eaf3;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.workbench-order-card .ant-card-body {
+  padding: 16px;
+}
+
+.workbench-order-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workbench-order-headside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.workbench-status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.workbench-status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.workbench-status-pill.is-dine-in {
+  background: #eef4ff;
+  border-color: #d5e3ff;
+  color: #1d4ed8;
+}
+
+.workbench-status-pill.is-takeaway {
+  background: #fff1e8;
+  border-color: #ffd5b8;
+  color: #c2410c;
+}
+
+.workbench-status-pill-state.is-created {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+.workbench-status-pill-state.is-paid,
+.workbench-status-pill-state.is-preparing {
+  background: #ecfeff;
+  border-color: #a5f3fc;
+  color: #0f766e;
+}
+
+.workbench-status-pill-state.is-completed {
+  background: #ecfdf3;
+  border-color: #abefc6;
+  color: #027a48;
+}
+
+.workbench-status-pill-state.is-cancelled {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b42318;
+}
+
+.workbench-amount-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px solid #f2d6a2;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff7e8, #fffbf2);
+  box-shadow: 0 8px 20px rgba(176, 118, 12, 0.08);
+  color: #9a6700;
+}
+
+.workbench-amount-currency {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.workbench-amount-value {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.workbench-order-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workbench-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475467;
+  font-size: 12px;
+}
+
+.workbench-meta-chip-location {
+  padding: 7px 12px;
+  border: 1px solid transparent;
+}
+
+.workbench-meta-chip-location.is-dine-in {
+  background: linear-gradient(135deg, #ecf3ff, #f5f9ff);
+  border-color: #cfe0ff;
+  color: #1d4ed8;
+}
+
+.workbench-meta-chip-location.is-takeaway {
+  background: linear-gradient(135deg, #fff1e8, #fff8f1);
+  border-color: #ffd5b8;
+  color: #c2410c;
+}
+
+.workbench-location-text {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+.workbench-order-items {
+  display: grid;
+  gap: 8px;
+}
+
+.workbench-order-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #edf2f7;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.workbench-order-item-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.workbench-order-item-side {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.workbench-order-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .manage-form-card .ant-form-item-label > label {
   color: #344054;
   font-weight: 500;
@@ -1136,6 +1325,44 @@
   .manage-form-grid,
   .inline-editor-row {
     grid-template-columns: 1fr;
+  }
+
+  .workbench-order-topline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .workbench-order-headside {
+    align-items: flex-start;
+  }
+
+  .workbench-status-strip {
+    justify-content: flex-start;
+  }
+
+  .workbench-amount-chip {
+    padding: 7px 11px;
+  }
+
+  .workbench-amount-value {
+    font-size: 18px;
+  }
+
+  .workbench-order-meta-row {
+    gap: 6px;
+  }
+
+  .workbench-meta-chip-location {
+    padding: 6px 10px;
+  }
+
+  .workbench-location-text {
+    font-size: 13px;
+  }
+
+  .workbench-order-footer {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 
