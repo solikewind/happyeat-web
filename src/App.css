@@ -1159,6 +1159,7 @@
 .manage-summary-strip {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
 }
 
@@ -1177,10 +1178,26 @@
 
 .manage-summary-pill.ant-tag {
   margin-inline-end: 0;
-  padding: 4px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* Summary-only cards are compact and visually attached to the filter/table area. */
+.manage-panel-card:has(> .ant-card-body > .manage-summary-strip) .ant-card-body {
+  padding: 8px 12px;
+}
+
+.manage-panel-card:has(> .ant-card-body > .manage-summary-strip) {
+  margin-bottom: -10px;
+}
+
+.manage-panel-card:has(> .ant-card-body > .manage-summary-strip),
+.manage-panel-card:has(> .ant-card-body > .manage-summary-strip):hover {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .manage-filter-group .ant-select,
@@ -1994,7 +2011,8 @@
   }
 
   .manage-summary-pill.ant-tag {
-    font-size: 11px;
+    padding: 2px 7px;
+    font-size: 10px;
   }
 
   .manage-filter-group .ant-select,
