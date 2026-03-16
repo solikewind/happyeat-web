@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Button, Card, Empty, Form, InputNumber, Popover, Radio, Space, Statistic, Tabs, Tag, Typography, message } from 'antd'
+import { Alert, Button, Card, Empty, Form, InputNumber, Popconfirm, Popover, Radio, Space, Statistic, Tabs, Tag, Typography, message } from 'antd'
 import { PlusOutlined, MinusOutlined, AudioOutlined, SoundOutlined } from '@ant-design/icons'
 import type { Menu, MenuCategory, MenuSpec, Table as TableType } from '../api/types'
 import { listMenuCategories, listMenus } from '../api/menu'
@@ -7,7 +7,7 @@ import { listTables } from '../api/table'
 import { createOrder } from '../api/order'
 import { useSTT } from '../hooks/useSTT'
 import { useTTS } from '../hooks/useTTS'
-import { matchMenuByText, parseOrderText } from '../utils/menuMatcher'
+import { matchMenuByText, parseOrderItems } from '../utils/menuMatcher'
 import { useOrderCart } from '../contexts/OrderCartContext'
 
 function defaultSpecs(specs: MenuSpec[]): MenuSpec[] {
@@ -157,42 +157,99 @@ export default function OrderDesk() {
     }
   }
 
-  const processedTranscriptRef = useRef<string>('')
-  useEffect(() => {
-    if (!finalTranscript || menus.length === 0) return
-    if (processedTranscriptRef.current === finalTranscript) return
-    processedTranscriptRef.current = finalTranscript
+  const inferMenusByMention = useCallback(
+    (text: string) => {
+      const normalized = text.toLowerCase().replace(/\s+/g, '').replace(/[，,。.!！？?；;、]/g, '')
+      if (!normalized) return [] as Menu[]
+      return [...menus]
+        .sort((a, b) => b.name.length - a.name.length)
+        .filter((menu) => normalized.includes(menu.name.toLowerCase().replace(/\s+/g, '')))
+    },
+    [menus]
+  )
 
-    const { quantity, menuName } = parseOrderText(finalTranscript)
-    const matchedMenus = matchMenuByText(menuName, menus)
+  const processedSpeechTextRef = useRef<Set<string>>(new Set())
+  const processSpeechText = useCallback(
+    (speechText: string) => {
+      const text = speechText.trim()
+      if (!text || menus.length === 0) return
+      if (processedSpeechTextRef.current.has(text)) return
+      processedSpeechTextRef.current.add(text)
 
-    if (matchedMenus.length > 0) {
-      const matchedMenu = matchedMenus[0]
-      setMenuQuantity(matchedMenu, quantity)
-      const { selectedSpecs } = getSelection(matchedMenu)
-      const specInfo = selectedSpecs.length ? selectedSpecs.map((s) => `${s.spec_type}:${s.spec_value}`).join(' ') : undefined
-      const unitPrice = matchedMenu.price + selectedSpecs.reduce((sum, s) => sum + (s.price_delta ?? 0), 0)
-      const price = Math.round(unitPrice * 100) / 100
-      setCart((prev) => {
-        const exist = prev.find((i) => i.menuId === matchedMenu.id && (i.specInfo ?? '') === (specInfo ?? ''))
-        if (exist) {
-          return prev.map((i) =>
-            i.menuId === matchedMenu.id && (i.specInfo ?? '') === (specInfo ?? '') ? { ...i, quantity: i.quantity + quantity } : i
-          )
+      const successItems: Array<{ menu: Menu; quantity: number }> = []
+      const failedNames: string[] = []
+      const pickedMenuIds = new Set<number>()
+      const parsedItems = parseOrderItems(text)
+
+      parsedItems.forEach((item) => {
+        const matchedMenus = matchMenuByText(item.menuName, menus)
+        if (matchedMenus.length > 0) {
+          const matchedMenu = matchedMenus[0]
+          if (pickedMenuIds.has(matchedMenu.id)) return
+          pickedMenuIds.add(matchedMenu.id)
+          successItems.push({ menu: matchedMenu, quantity: item.quantity })
+        } else {
+          failedNames.push(item.menuName)
         }
-        return [...prev, { menuId: matchedMenu.id, name: matchedMenu.name, price, quantity, specInfo, image: matchedMenu.image }]
       })
-      message.success(`已添加 ${quantity} 份 ${matchedMenu.name}`)
-      if (ttsSupported) {
-        speak(`已添加${quantity}份${matchedMenu.name}，价格${price}元`)
+
+      // 智能兜底：即使语义解析失败，也尽量从整句中提取到被提及的菜名，默认加 1 份。
+      if (successItems.length === 0) {
+        const mentionedMenus = inferMenusByMention(text)
+        mentionedMenus.forEach((menu) => {
+          if (pickedMenuIds.has(menu.id)) return
+          pickedMenuIds.add(menu.id)
+          successItems.push({ menu, quantity: 1 })
+        })
       }
-    } else {
-      message.warning(`未找到菜品：${menuName}`)
-      if (ttsSupported) {
-        speak(`抱歉，未找到${menuName}`)
+
+      if (successItems.length > 0) {
+        setCart((prev) => {
+          const next = [...prev]
+          successItems.forEach(({ menu, quantity }) => {
+            const { selectedSpecs } = getSelection(menu)
+            const specInfo = selectedSpecs.length ? selectedSpecs.map((s) => `${s.spec_type}:${s.spec_value}`).join(' ') : undefined
+            const unitPrice = menu.price + selectedSpecs.reduce((sum, s) => sum + (s.price_delta ?? 0), 0)
+            const price = Math.round(unitPrice * 100) / 100
+            const existIndex = next.findIndex((i) => i.menuId === menu.id && (i.specInfo ?? '') === (specInfo ?? ''))
+            if (existIndex >= 0) {
+              const current = next[existIndex]
+              next[existIndex] = { ...current, quantity: current.quantity + quantity }
+            } else {
+              next.push({ menuId: menu.id, name: menu.name, price, quantity, specInfo, image: menu.image })
+            }
+          })
+          return next
+        })
+
+        const successText = successItems.map((item) => `${item.menu.name} x${item.quantity}`).join('、')
+        message.success(`已添加：${successText}`)
+        if (ttsSupported) {
+          speak(`已添加${successText}`)
+        }
       }
+
+      if (failedNames.length > 0) {
+        const failedText = failedNames.join('、')
+        message.warning(`未找到菜品：${failedText}`)
+      } else if (successItems.length === 0) {
+        message.warning('未识别到明确菜品，请再说一遍')
+      }
+    },
+    [menus, inferMenusByMention, getSelection, setCart, ttsSupported, speak]
+  )
+
+  useEffect(() => {
+    if (finalTranscript) {
+      processSpeechText(finalTranscript)
     }
-  }, [finalTranscript, menus, ttsSupported, speak, getSelection, setCart])
+  }, [finalTranscript, processSpeechText])
+
+  useEffect(() => {
+    if (!listening && transcript && !finalTranscript) {
+      processSpeechText(transcript)
+    }
+  }, [listening, transcript, finalTranscript, processSpeechText])
 
   const speakMenuInfo = (menu: Menu) => {
     if (!ttsSupported) return
@@ -254,7 +311,7 @@ export default function OrderDesk() {
                     <div>
                       <p>点击开始语音点菜</p>
                       <p style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-                        可以说："来两份宫保鸡丁"、"要一个红烧肉"
+                        可以说："来两份宫保鸡丁和一份鱼香肉丝，再要一个可乐"
                       </p>
                     </div>
                   }
@@ -446,17 +503,19 @@ export default function OrderDesk() {
               )}
             </Form>
 
-            <Button
-              className="app-accent-cta"
-              type="primary"
-              size="large"
-              block
-              onClick={handleSubmit}
-              loading={submitting}
-              disabled={cart.length === 0}
+            <Popconfirm
+              title="确认提交订单？"
+              description="提交后将进入订单流程，可在订单管理中继续跟进状态。"
+              okText="确认提交"
+              cancelText="取消"
+              onConfirm={handleSubmit}
+              disabled={cart.length === 0 || submitting}
+              okButtonProps={{ loading: submitting }}
             >
-              提交订单
-            </Button>
+              <Button className="app-accent-cta" type="primary" size="large" block loading={submitting} disabled={cart.length === 0}>
+                提交订单
+              </Button>
+            </Popconfirm>
           </Space>
         </Card>
 

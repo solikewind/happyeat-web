@@ -45,6 +45,7 @@ const STATUS_COLOR_MAP: Record<string, string> = {
 export default function OrderManage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [total, setTotal] = useState(0)
+  const [pendingTotal, setPendingTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
@@ -59,14 +60,35 @@ export default function OrderManage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await listOrders({
-        current: page,
-        pageSize: 10,
-        status: statusFilter,
-        order_type: orderTypeFilter,
-      })
+      const [res, createdRes, paidRes, preparingRes] = await Promise.all([
+        listOrders({
+          current: page,
+          pageSize: 10,
+          status: statusFilter,
+          order_type: orderTypeFilter,
+        }),
+        listOrders({
+          current: 1,
+          pageSize: 1,
+          status: 'created',
+          order_type: orderTypeFilter,
+        }),
+        listOrders({
+          current: 1,
+          pageSize: 1,
+          status: 'paid',
+          order_type: orderTypeFilter,
+        }),
+        listOrders({
+          current: 1,
+          pageSize: 1,
+          status: 'preparing',
+          order_type: orderTypeFilter,
+        }),
+      ])
       setOrders(Array.isArray(res?.orders) ? res.orders : [])
       setTotal(Number(res?.total) || 0)
+      setPendingTotal((Number(createdRes?.total) || 0) + (Number(paidRes?.total) || 0) + (Number(preparingRes?.total) || 0))
     } catch {
       message.error('加载订单失败')
     } finally {
@@ -154,29 +176,12 @@ export default function OrderManage() {
     }
   }
 
-  const pendingCount = useMemo(
-    () => orders.filter((item) => ['created', 'paid', 'preparing'].includes(item.status)).length,
-    [orders]
-  )
+  const preparingCount = useMemo(() => orders.filter((item) => item.status === 'preparing').length, [orders])
   const pageAmount = useMemo(() => orders.reduce((sum, item) => sum + (item.total_amount || 0), 0), [orders])
 
   return (
     <div className="manage-shell">
-      <Card className="manage-panel-card">
-        <div className="manage-summary-strip">
-          <Tag color="blue" className="manage-summary-pill">
-            订单总数 {total}
-          </Tag>
-          <Tag color="gold" className="manage-summary-pill">
-            本页待处理 {pendingCount}
-          </Tag>
-          <Tag color="geekblue" className="manage-summary-pill">
-            本页金额 ¥{pageAmount.toFixed(2)}
-          </Tag>
-        </div>
-      </Card>
-
-      <Card className="manage-panel-card">
+      <Card className="order-desk-filter-card">
         <div className="manage-filter-bar">
           <div className="manage-filter-group">
             <Select
@@ -209,6 +214,11 @@ export default function OrderManage() {
       </Card>
 
       <Card className="manage-table-card">
+        <div className="compact-summary-inline">
+          <Tag color="blue">待处理总数 {pendingTotal}</Tag>
+          <Tag color="purple">本页制作中 {preparingCount}</Tag>
+          <Tag color="gold">本页金额 ¥{pageAmount.toFixed(2)}</Tag>
+        </div>
         <Table
           rowKey="id"
           loading={loading}

@@ -116,20 +116,6 @@ function CategoryTab() {
 
   return (
     <div className="manage-shell">
-      <Card className="manage-panel-card">
-        <div className="manage-summary-strip">
-          <Tag color="blue" className="manage-summary-pill">
-            分类总数 {total}
-          </Tag>
-          <Tag color="cyan" className="manage-summary-pill">
-            本页显示 {list.length}
-          </Tag>
-          <Tag color="geekblue" className="manage-summary-pill">
-            应用场景 大厅 / 包间
-          </Tag>
-        </div>
-      </Card>
-
       <Card className="manage-table-card">
         <div className="manage-filter-bar">
           <div>
@@ -143,6 +129,12 @@ function CategoryTab() {
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
             新建分类
           </Button>
+        </div>
+
+        <div className="compact-summary-inline">
+          <Tag color="blue">分类总数 {total}</Tag>
+          <Tag color="purple">本页显示 {list.length}</Tag>
+          <Tag color="gold">应用场景 大厅 / 包间</Tag>
         </div>
 
         <Table
@@ -340,20 +332,6 @@ function TableListTab() {
   return (
     <div className="manage-shell">
       <Card className="manage-panel-card">
-        <div className="manage-summary-strip">
-          <Tag color="blue" className="manage-summary-pill">
-            餐桌总数 {total}
-          </Tag>
-          <Tag color="green" className="manage-summary-pill">
-            本页空闲 {idleCount}
-          </Tag>
-          <Tag color="orange" className="manage-summary-pill">
-            本页使用中 {usingCount}
-          </Tag>
-        </div>
-      </Card>
-
-      <Card className="manage-panel-card">
         <div className="manage-filter-bar">
           <div className="manage-filter-group">
             <Select
@@ -372,6 +350,11 @@ function TableListTab() {
       </Card>
 
       <Card className="manage-table-card">
+        <div className="compact-summary-inline">
+          <Tag color="blue">餐桌总数 {total}</Tag>
+          <Tag color="green">本页空闲 {idleCount}</Tag>
+          <Tag color="orange">本页使用中 {usingCount}</Tag>
+        </div>
         <Table
           rowKey="id"
           loading={loading}
