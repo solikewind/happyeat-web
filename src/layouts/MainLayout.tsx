@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { Avatar, Breadcrumb, Button, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
+import { Avatar, Breadcrumb, Button, Drawer, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
 import {
   DashboardOutlined,
   HomeOutlined,
@@ -38,6 +38,7 @@ export default function MainLayout() {
   const { isDark, toggleTheme } = useThemeMode()
   const [collapsed, setCollapsed] = useState(false)
   const [isBreakpointBroken, setIsBreakpointBroken] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const currentPage = pageMeta[location.pathname] ?? pageMeta['/']
   const selectedKey = navItems.find((item) => item.key === location.pathname)?.key ?? '/'
 
@@ -67,6 +68,7 @@ export default function MainLayout() {
           onBreakpoint={(broken) => {
             setIsBreakpointBroken(broken)
             if (broken) setCollapsed(true)
+            if (!broken) setMobileNavOpen(false)
           }}
         >
           <div className={`app-brand${collapsed ? ' is-collapsed' : ''}`}>
@@ -129,6 +131,11 @@ export default function MainLayout() {
               <Typography.Text className="app-page-description">{currentPage.description}</Typography.Text>
             </div>
             <Space size={10}>
+              {isBreakpointBroken && (
+                <Tooltip title="打开菜单">
+                  <Button className="app-theme-toggle" icon={<MenuOutlined />} onClick={() => setMobileNavOpen(true)} />
+                </Tooltip>
+              )}
               <Tooltip title={isDark ? '切换到日间模式' : '切换到夜间模式'}>
                 <Button className="app-theme-toggle" icon={isDark ? <SunOutlined /> : <MoonOutlined />} onClick={toggleTheme} />
               </Tooltip>
@@ -143,6 +150,31 @@ export default function MainLayout() {
               </Dropdown>
             </Space>
           </Header>
+
+          <Drawer
+            title="功能导航"
+            placement="left"
+            width={264}
+            open={mobileNavOpen}
+            onClose={() => setMobileNavOpen(false)}
+            styles={{ body: { padding: 12 } }}
+          >
+            <Menu
+              className="app-nav-menu"
+              theme="light"
+              selectedKeys={[selectedKey]}
+              mode="inline"
+              items={navItems.map((item) => ({
+                ...item,
+                title: item.label,
+                label: (
+                  <Link to={item.key} onClick={() => setMobileNavOpen(false)}>
+                    <span>{item.label}</span>
+                  </Link>
+                ),
+              }))}
+            />
+          </Drawer>
 
           <Content className="app-content">
             <div className="app-content-inner">
