@@ -1,39 +1,31 @@
-/**
- * 菜单匹配工具
- * 用于将语音识别的文本匹配到菜单项
- */
+﻿import type { Menu } from '../api/types'
 
-import type { Menu } from '../api/types'
+export interface ParsedOrderItem {
+  quantity: number
+  menuName: string
+}
 
-/**
- * 模糊匹配菜单名称
- * @param text 识别的文本
- * @param menus 菜单列表
- * @returns 匹配的菜单列表（按匹配度排序）
- */
+const ACTION_PREFIX_RE =
+  /^(来|要|点|加|再来|再要|再点|再加|给我|帮我|请|麻烦|想要|我要|我想要|我想点|来个|来份|来一份|要个|要一份)+/g
+const ITEM_SPLIT_RE = /(?:,|，|。|；|;|然后|再来|再要|再点|再加|外加|另外|还有|加上|并且|并|和)/g
+const UNIT_RE = '(?:份|个|碗|盘|杯|瓶|扎|听|串|份儿)?'
+
 export function matchMenuByText(text: string, menus: Menu[]): Menu[] {
   if (!text || !menus.length) return []
 
   const normalizedText = text.trim().toLowerCase().replace(/\s+/g, '')
 
-  // 计算匹配分数
   const scored = menus.map((menu) => {
     const menuName = menu.name.toLowerCase().replace(/\s+/g, '')
     let score = 0
 
-    // 完全匹配
     if (menuName === normalizedText) {
       score = 100
-    }
-    // 包含匹配
-    else if (menuName.includes(normalizedText) || normalizedText.includes(menuName)) {
+    } else if (menuName.includes(normalizedText) || normalizedText.includes(menuName)) {
       score = 80
-      // 计算相似度
       const similarity = calculateSimilarity(normalizedText, menuName)
       score = Math.max(score, similarity * 100)
-    }
-    // 部分匹配（至少3个字符）
-    else if (normalizedText.length >= 3) {
+    } else if (normalizedText.length >= 3) {
       const commonChars = getCommonChars(normalizedText, menuName)
       if (commonChars.length >= 3) {
         score = 50 + (commonChars.length / Math.max(normalizedText.length, menuName.length)) * 30
@@ -43,16 +35,12 @@ export function matchMenuByText(text: string, menus: Menu[]): Menu[] {
     return { menu, score }
   })
 
-  // 过滤并排序
   return scored
-    .filter((item) => item.score > 30) // 最低匹配度阈值
+    .filter((item) => item.score > 30)
     .sort((a, b) => b.score - a.score)
     .map((item) => item.menu)
 }
 
-/**
- * 计算两个字符串的相似度（Levenshtein 距离的变体）
- */
 function calculateSimilarity(str1: string, str2: string): number {
   const longer = str1.length > str2.length ? str1 : str2
   const shorter = str1.length > str2.length ? str2 : str1
@@ -63,30 +51,23 @@ function calculateSimilarity(str1: string, str2: string): number {
   return (longer.length - distance) / longer.length
 }
 
-/**
- * 计算 Levenshtein 距离
- */
 function levenshteinDistance(str1: string, str2: string): number {
   const matrix: number[][] = []
 
-  for (let i = 0; i <= str2.length; i++) {
+  for (let i = 0; i <= str2.length; i += 1) {
     matrix[i] = [i]
   }
 
-  for (let j = 0; j <= str1.length; j++) {
+  for (let j = 0; j <= str1.length; j += 1) {
     matrix[0][j] = j
   }
 
-  for (let i = 1; i <= str2.length; i++) {
-    for (let j = 1; j <= str1.length; j++) {
+  for (let i = 1; i <= str2.length; i += 1) {
+    for (let j = 1; j <= str1.length; j += 1) {
       if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
         matrix[i][j] = matrix[i - 1][j - 1]
       } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // 替换
-          matrix[i][j - 1] + 1, // 插入
-          matrix[i - 1][j] + 1 // 删除
-        )
+        matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
       }
     }
   }
@@ -94,9 +75,6 @@ function levenshteinDistance(str1: string, str2: string): number {
   return matrix[str2.length][str1.length]
 }
 
-/**
- * 获取两个字符串的公共字符
- */
 function getCommonChars(str1: string, str2: string): string {
   const chars1 = str1.split('')
   const chars2 = str2.split('')
@@ -106,20 +84,16 @@ function getCommonChars(str1: string, str2: string): string {
     const index = chars2.indexOf(char)
     if (index !== -1) {
       common.push(char)
-      chars2.splice(index, 1) // 避免重复匹配
+      chars2.splice(index, 1)
     }
   }
 
   return common.join('')
 }
 
-/**
- * 从语音文本中提取数量和菜单名称
- * @param text 识别的文本，如 "来两份宫保鸡丁"、"要一个红烧肉"
- * @returns { quantity: number, menuName: string }
- */
-export function parseOrderText(text: string): { quantity: number; menuName: string } {
-  const quantityMap: Record<string, number> = {
+function chineseNumberToInt(text: string): number {
+  const digitMap: Record<string, number> = {
+    零: 0,
     一: 1,
     二: 2,
     两: 2,
@@ -130,47 +104,99 @@ export function parseOrderText(text: string): { quantity: number; menuName: stri
     七: 7,
     八: 8,
     九: 9,
-    十: 10,
-    一份: 1,
-    两份: 2,
-    两分: 2,
-    三分: 3,
-    四分: 4,
-    五分: 5,
-    六分: 6,
-    七分: 7,
-    八分: 8,
-    九分: 9,
-    十分: 10,
-    一个: 1,
-    两个: 2,
-    三个: 3,
-    四个: 4,
-    五个: 5,
-    六个: 6,
-    七个: 7,
-    八个: 8,
-    九个: 9,
-    十个: 10,
   }
 
-  let quantity = 1
-  let menuName = text.trim()
+  let total = 0
+  let current = 0
 
-  // 尝试提取数量
-  for (const [key, value] of Object.entries(quantityMap)) {
-    if (text.includes(key)) {
-      quantity = value
-      menuName = text.replace(new RegExp(key, 'g'), '').trim()
-      break
+  for (const char of text) {
+    if (char === '十') {
+      total += (current || 1) * 10
+      current = 0
+      continue
+    }
+    if (char === '百') {
+      total += (current || 1) * 100
+      current = 0
+      continue
+    }
+
+    if (char in digitMap) {
+      current = digitMap[char]
     }
   }
 
-  // 移除常见的前缀和后缀
-  menuName = menuName
-    .replace(/^(来|要|点|加|上|来一份|来一个|要一份|要一个|点一份|点一个)/, '')
-    .replace(/(一份|一个|份|个|菜|道)$/, '')
+  const value = total + current
+  return value > 0 ? value : 1
+}
+
+function parseQuantityAndName(rawText: string): ParsedOrderItem | null {
+  const text = rawText
+    .replace(/\s+/g, '')
+    .replace(ACTION_PREFIX_RE, '')
+    .replace(/^(来点|来份|要点|点个|点份)/, '')
     .trim()
 
-  return { quantity, menuName }
+  if (!text) return null
+
+  let quantity = 1
+  let menuName = text
+
+  const arabicMatch = menuName.match(new RegExp(`(\\d+)${UNIT_RE}`))
+  if (arabicMatch && arabicMatch[1]) {
+    quantity = Math.max(1, Number(arabicMatch[1]))
+    menuName = menuName.replace(arabicMatch[0], '')
+  } else {
+    const chineseMatch = menuName.match(new RegExp(`([零一二两三四五六七八九十百]+)${UNIT_RE}`))
+    if (chineseMatch && chineseMatch[1]) {
+      quantity = chineseNumberToInt(chineseMatch[1])
+      menuName = menuName.replace(chineseMatch[0], '')
+    }
+  }
+
+  menuName = menuName
+    .replace(/^(的|来|要|点|加)/, '')
+    .replace(/(一份|一個|一个|份|个|菜|谢谢|吧|啊|呀)$/g, '')
+    .trim()
+
+  if (!menuName) return null
+
+  return {
+    quantity: Math.min(99, Math.max(1, quantity)),
+    menuName,
+  }
+}
+
+export function parseOrderItems(text: string): ParsedOrderItem[] {
+  const raw = text.trim()
+  if (!raw) return []
+
+  const chunks = raw.split(ITEM_SPLIT_RE).map((item) => item.trim()).filter(Boolean)
+  const parsed = chunks.map(parseQuantityAndName).filter((item): item is ParsedOrderItem => Boolean(item))
+
+  if (!parsed.length) {
+    const fallback = parseQuantityAndName(raw)
+    return fallback ? [fallback] : []
+  }
+
+  const merged = new Map<string, ParsedOrderItem>()
+  parsed.forEach((item) => {
+    const key = item.menuName.toLowerCase()
+    const existing = merged.get(key)
+    if (existing) {
+      existing.quantity = Math.min(99, existing.quantity + item.quantity)
+    } else {
+      merged.set(key, { ...item })
+    }
+  })
+
+  return Array.from(merged.values())
+}
+
+export function parseOrderText(text: string): { quantity: number; menuName: string } {
+  const items = parseOrderItems(text)
+  if (!items.length) {
+    return { quantity: 1, menuName: text.trim() }
+  }
+  return items[0]
 }

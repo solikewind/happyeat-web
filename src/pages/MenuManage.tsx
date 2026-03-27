@@ -124,20 +124,6 @@ function CategoryTab() {
 
   return (
     <div className="manage-shell">
-      <Card className="manage-panel-card">
-        <div className="manage-summary-strip">
-          <Tag color="blue" className="manage-summary-pill">
-            分类总数 {total}
-          </Tag>
-          <Tag color="cyan" className="manage-summary-pill">
-            本页显示 {list.length}
-          </Tag>
-          <Tag color="geekblue" className="manage-summary-pill">
-            常见分类 热菜 / 凉菜 / 饮品
-          </Tag>
-        </div>
-      </Card>
-
       <Card className="manage-table-card">
         <div className="manage-filter-bar">
           <div>
@@ -151,6 +137,12 @@ function CategoryTab() {
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!canEditMenu}>
             新建分类
           </Button>
+        </div>
+
+        <div className="compact-summary-inline">
+          <Tag color="blue">分类总数 {total}</Tag>
+          <Tag color="purple">本页显示 {list.length}</Tag>
+          <Tag color="gold">常见分类 热菜 / 凉菜 / 饮品</Tag>
         </div>
 
         <Table
@@ -387,23 +379,6 @@ function MenuListTab() {
   return (
     <div className="manage-shell">
       <Card className="manage-panel-card">
-        <div className="manage-summary-strip">
-          <Tag color="blue" className="manage-summary-pill">
-            菜品总数 {total}
-          </Tag>
-          <Tag color="cyan" className="manage-summary-pill">
-            本页显示 {menus.length}
-          </Tag>
-          <Tag color="gold" className="manage-summary-pill">
-            本页缺图 {menusWithoutImage}
-          </Tag>
-          <Tag color="geekblue" className="manage-summary-pill">
-            本页有规格 {menusWithSpecs}
-          </Tag>
-        </div>
-      </Card>
-
-      <Card className="manage-panel-card">
         <div className="manage-filter-bar">
           <div className="manage-filter-group">
             <Select
@@ -438,6 +413,12 @@ function MenuListTab() {
       </Card>
 
       <Card className="manage-table-card">
+        <div className="compact-summary-inline">
+          <Tag color="blue">菜品总数 {total}</Tag>
+          <Tag color="purple">本页显示 {menus.length}</Tag>
+          <Tag color="orange">本页缺图 {menusWithoutImage}</Tag>
+          <Tag color="gold">本页有规格 {menusWithSpecs}</Tag>
+        </div>
         <Table
           rowKey="id"
           loading={loading}
