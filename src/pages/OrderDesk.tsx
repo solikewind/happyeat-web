@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Card, Empty, Form, InputNumber, Popover, Radio, Space, Statistic, Tabs, Tag, Typography, message } from 'antd'
 import { PlusOutlined, MinusOutlined, AudioOutlined, SoundOutlined } from '@ant-design/icons'
 import type { Menu, MenuCategory, MenuSpec, Table as TableType } from '../api/types'
@@ -9,6 +9,7 @@ import { useSTT } from '../hooks/useSTT'
 import { useTTS } from '../hooks/useTTS'
 import { matchMenuByText, parseOrderText } from '../utils/menuMatcher'
 import { useOrderCart } from '../contexts/OrderCartContext'
+import { useAuth } from '../contexts/AuthContext'
 
 function defaultSpecs(specs: MenuSpec[]): MenuSpec[] {
   const byType = new Map<string, MenuSpec>()
@@ -24,6 +25,8 @@ const ORDER_TYPE_OPTIONS = [
 ]
 
 export default function OrderDesk() {
+  const { can } = useAuth()
+  const canCreateFromDesk = can('order_desk:create')
   const { cart, setCart, updateCartQty, cartTotal, clearCart } = useOrderCart()
   const [categories, setCategories] = useState<MenuCategory[]>([])
   const [menus, setMenus] = useState<Menu[]>([])
@@ -203,6 +206,10 @@ export default function OrderDesk() {
   }
 
   const handleSubmit = async () => {
+    if (!canCreateFromDesk) {
+      message.warning('当前账号没有点餐台下单权限')
+      return
+    }
     if (cart.length === 0) {
       message.warning('请先添加菜品')
       return
@@ -453,7 +460,7 @@ export default function OrderDesk() {
               block
               onClick={handleSubmit}
               loading={submitting}
-              disabled={cart.length === 0}
+              disabled={cart.length === 0 || !canCreateFromDesk}
             >
               提交订单
             </Button>

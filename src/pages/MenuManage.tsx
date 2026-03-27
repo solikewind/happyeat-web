@@ -17,6 +17,7 @@ import {
 } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import type { Menu, MenuCategory, MenuSpec } from '../api/types'
+import { useAuth } from '../contexts/AuthContext'
 import {
   createMenu,
   createMenuCategory,
@@ -32,6 +33,8 @@ import {
 const asArray = <T,>(value: T[] | undefined | null) => (Array.isArray(value) ? value : [])
 
 function CategoryTab() {
+  const { can } = useAuth()
+  const canEditMenu = can('menu:edit')
   const [list, setList] = useState<MenuCategory[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -59,12 +62,20 @@ function CategoryTab() {
   }, [load])
 
   const openCreate = () => {
+    if (!canEditMenu) {
+      message.warning('当前账号没有菜单编辑权限')
+      return
+    }
     setEditingId(null)
     form.resetFields()
     setModalOpen(true)
   }
 
   const openEdit = (record: MenuCategory) => {
+    if (!canEditMenu) {
+      message.warning('当前账号没有菜单编辑权限')
+      return
+    }
     setEditingId(record.id)
     form.setFieldsValue({
       name: record.name,
@@ -98,6 +109,10 @@ function CategoryTab() {
   }
 
   const onDelete = async (id: number) => {
+    if (!canEditMenu) {
+      message.warning('当前账号没有菜单编辑权限')
+      return
+    }
     try {
       await deleteMenuCategory(id)
       message.success('已删除')
@@ -133,7 +148,7 @@ function CategoryTab() {
               用于维护点餐页的分类导航与菜品归属。
             </Typography.Text>
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!canEditMenu}>
             新建分类
           </Button>
         </div>
@@ -171,10 +186,10 @@ function CategoryTab() {
               width: 156,
               render: (_, record: MenuCategory) => (
                 <Space>
-                  <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>
+                  <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} disabled={!canEditMenu}>
                     编辑
                   </Button>
-                  <Popconfirm title="确定删除该分类？" onConfirm={() => onDelete(record.id)}>
+                  <Popconfirm title="确定删除该分类？" onConfirm={() => onDelete(record.id)} disabled={!canEditMenu}>
                     <Button type="link" size="small" danger icon={<DeleteOutlined />}>
                       删除
                     </Button>
@@ -200,6 +215,7 @@ function CategoryTab() {
         open={modalOpen}
         onOk={onModalOk}
         onCancel={() => setModalOpen(false)}
+        okButtonProps={{ disabled: !canEditMenu }}
         okText="保存"
         cancelText="取消"
         centered
@@ -226,6 +242,8 @@ function CategoryTab() {
 }
 
 function MenuListTab() {
+  const { can } = useAuth()
+  const canEditMenu = can('menu:edit')
   const [menus, setMenus] = useState<Menu[]>([])
   const [categories, setCategories] = useState<MenuCategory[]>([])
   const [total, setTotal] = useState(0)
@@ -274,6 +292,10 @@ function MenuListTab() {
   const menusWithSpecs = useMemo(() => menus.filter((item) => (item.specs?.length ?? 0) > 0).length, [menus])
 
   const openCreate = async () => {
+    if (!canEditMenu) {
+      message.warning('当前账号没有菜单编辑权限')
+      return
+    }
     setEditingId(null)
     form.resetFields()
     form.setFieldValue('specs', [])
@@ -282,6 +304,10 @@ function MenuListTab() {
   }
 
   const openEdit = async (record: Menu) => {
+    if (!canEditMenu) {
+      message.warning('当前账号没有菜单编辑权限')
+      return
+    }
     setEditingId(record.id)
     try {
       const { menu } = await getMenu(record.id)
@@ -340,6 +366,10 @@ function MenuListTab() {
   }
 
   const onDelete = async (id: number) => {
+    if (!canEditMenu) {
+      message.warning('当前账号没有菜单编辑权限')
+      return
+    }
     try {
       await deleteMenu(id)
       message.success('已删除')
@@ -401,7 +431,7 @@ function MenuListTab() {
               }}
             />
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!canEditMenu}>
             新建菜品
           </Button>
         </div>
@@ -461,10 +491,10 @@ function MenuListTab() {
               width: 156,
               render: (_, record: Menu) => (
                 <Space>
-                  <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>
+                  <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} disabled={!canEditMenu}>
                     编辑
                   </Button>
-                  <Popconfirm title="确定删除该菜品？" onConfirm={() => onDelete(record.id)}>
+                  <Popconfirm title="确定删除该菜品？" onConfirm={() => onDelete(record.id)} disabled={!canEditMenu}>
                     <Button type="link" size="small" danger icon={<DeleteOutlined />}>
                       删除
                     </Button>
@@ -490,6 +520,7 @@ function MenuListTab() {
         open={modalOpen}
         onOk={onModalOk}
         onCancel={() => setModalOpen(false)}
+        okButtonProps={{ disabled: !canEditMenu }}
         okText="保存"
         cancelText="取消"
         centered

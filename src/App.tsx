@@ -1,10 +1,11 @@
 import { Suspense, lazy, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { ConfigProvider, Spin, theme as antdTheme } from 'antd'
+import { Button, ConfigProvider, Result, Spin, theme as antdTheme } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider, useThemeMode } from './contexts/ThemeContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import type { PermissionKey } from './auth/permissions'
 import './App.css'
 
 const MainLayout = lazy(() => import('./layouts/MainLayout'))
@@ -15,10 +16,17 @@ const TableManage = lazy(() => import('./pages/TableManage'))
 const OrderManage = lazy(() => import('./pages/OrderManage'))
 const OrderDesk = lazy(() => import('./pages/OrderDesk'))
 const Workbench = lazy(() => import('./pages/Workbench'))
+const PermissionManage = lazy(() => import('./pages/PermissionManage'))
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAuth()
   if (!isLoggedIn) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
+
+function PermissionRoute({ permission, children }: { permission: PermissionKey; children: ReactNode }) {
+  const { can } = useAuth()
+  if (!can(permission)) return <Navigate to="/unauthorized" replace />
   return <>{children}</>
 }
 
@@ -36,6 +44,21 @@ function AppRoutes() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
+          path="/unauthorized"
+          element={
+            <Result
+              status="403"
+              title="403"
+              subTitle="当前账号没有访问此页面的权限。"
+              extra={
+                <Button type="primary" onClick={() => window.history.back()}>
+                  返回上一页
+                </Button>
+              }
+            />
+          }
+        />
+        <Route
           path="/"
           element={
             <ProtectedRoute>
@@ -43,12 +66,62 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Home />} />
-          <Route path="menu" element={<MenuManage />} />
-          <Route path="tables" element={<TableManage />} />
-          <Route path="orders" element={<OrderManage />} />
-          <Route path="order-desk" element={<OrderDesk />} />
-          <Route path="workbench" element={<Workbench />} />
+          <Route
+            index
+            element={
+              <PermissionRoute permission="home:view">
+                <Home />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="menu"
+            element={
+              <PermissionRoute permission="menu:view">
+                <MenuManage />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="tables"
+            element={
+              <PermissionRoute permission="table:view">
+                <TableManage />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="orders"
+            element={
+              <PermissionRoute permission="orders:view">
+                <OrderManage />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="order-desk"
+            element={
+              <PermissionRoute permission="order_desk:view">
+                <OrderDesk />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="workbench"
+            element={
+              <PermissionRoute permission="workbench:view">
+                <Workbench />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="permissions"
+            element={
+              <PermissionRoute permission="permission:view">
+                <PermissionManage />
+              </PermissionRoute>
+            }
+          />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

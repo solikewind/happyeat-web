@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Avatar, Breadcrumb, Button, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
 import {
@@ -11,6 +11,7 @@ import {
   MoonOutlined,
   ShoppingCartOutlined,
   ShoppingOutlined,
+  SettingOutlined,
   SunOutlined,
   TableOutlined,
   UserOutlined,
@@ -18,28 +19,55 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { OrderCartProvider } from '../contexts/OrderCartContext'
 import { useThemeMode } from '../contexts/ThemeContext'
+import type { PermissionKey } from '../auth/permissions'
 
 const { Header, Sider, Content } = Layout
 
 const navItems = [
-  { key: '/', icon: <HomeOutlined />, label: '首页', description: '经营概览与快捷入口' },
-  { key: '/workbench', icon: <DashboardOutlined />, label: '工作台', description: '后厨制作与出单处理' },
-  { key: '/orders', icon: <ShoppingOutlined />, label: '订单管理', description: '订单查询与状态跟进' },
-  { key: '/order-desk', icon: <ShoppingCartOutlined />, label: '点餐台', description: '快速下单与购物车结算' },
-  { key: '/menu', icon: <MenuOutlined />, label: '菜单管理', description: '维护菜品与分类信息' },
-  { key: '/tables', icon: <TableOutlined />, label: '餐桌管理', description: '查看桌台状态和容量' },
+  { key: '/', icon: <HomeOutlined />, label: '首页', description: '经营概览与快捷入口', permission: 'home:view' as PermissionKey },
+  {
+    key: '/workbench',
+    icon: <DashboardOutlined />,
+    label: '工作台',
+    description: '后厨制作与出单处理',
+    permission: 'workbench:view' as PermissionKey,
+  },
+  {
+    key: '/orders',
+    icon: <ShoppingOutlined />,
+    label: '订单管理',
+    description: '订单查询与状态跟进',
+    permission: 'orders:view' as PermissionKey,
+  },
+  {
+    key: '/order-desk',
+    icon: <ShoppingCartOutlined />,
+    label: '点餐台',
+    description: '快速下单与购物车结算',
+    permission: 'order_desk:view' as PermissionKey,
+  },
+  { key: '/menu', icon: <MenuOutlined />, label: '菜单管理', description: '维护菜品与分类信息', permission: 'menu:view' as PermissionKey },
+  { key: '/tables', icon: <TableOutlined />, label: '餐桌管理', description: '查看桌台状态和容量', permission: 'table:view' as PermissionKey },
+  {
+    key: '/permissions',
+    icon: <SettingOutlined />,
+    label: '权限管理',
+    description: '角色权限矩阵与页面操作控制',
+    permission: 'permission:view' as PermissionKey,
+  },
 ]
 
 const pageMeta = Object.fromEntries(navItems.map((item) => [item.key, item]))
 
 export default function MainLayout() {
   const location = useLocation()
-  const { logout } = useAuth()
+  const { logout, role, can } = useAuth()
   const { isDark, toggleTheme } = useThemeMode()
   const [collapsed, setCollapsed] = useState(false)
   const [isBreakpointBroken, setIsBreakpointBroken] = useState(false)
+  const visibleNavItems = navItems.filter((item) => can(item.permission))
   const currentPage = pageMeta[location.pathname] ?? pageMeta['/']
-  const selectedKey = navItems.find((item) => item.key === location.pathname)?.key ?? '/'
+  const selectedKey = visibleNavItems.find((item) => item.key === location.pathname)?.key ?? visibleNavItems[0]?.key ?? '/'
 
   const userMenu = {
     items: [
@@ -84,7 +112,7 @@ export default function MainLayout() {
             selectedKeys={[selectedKey]}
             mode="inline"
             inlineCollapsed={collapsed}
-            items={navItems.map((item) => ({
+            items={visibleNavItems.map((item) => ({
               ...item,
               title: item.label,
               label: (
@@ -136,8 +164,8 @@ export default function MainLayout() {
                 <Space className="app-user-entry">
                   <Avatar size={36} icon={<UserOutlined />} />
                   <span>
-                    <strong>管理员</strong>
-                    <span className="app-user-role">系统账户</span>
+                    <strong>{role || '未识别账号'}</strong>
+                    <span className="app-user-role">当前角色</span>
                   </span>
                 </Space>
               </Dropdown>

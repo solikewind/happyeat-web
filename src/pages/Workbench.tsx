@@ -1,8 +1,9 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Card, Empty, Pagination, Select, Space, Tag, Typography, message } from 'antd'
 import { CheckOutlined, ClockCircleOutlined } from '@ant-design/icons'
 import type { Order } from '../api/types'
 import { listWorkbenchOrders, updateOrderStatus } from '../api/order'
+import { useAuth } from '../contexts/AuthContext'
 
 const ORDER_TYPE_MAP: Record<string, string> = {
   dine_in: '堂食',
@@ -26,6 +27,8 @@ const asText = (value: unknown, fallback = '-') => {
 const asNumber = (value: unknown) => (typeof value === 'number' ? value : Number(value) || 0)
 
 export default function Workbench() {
+  const { can } = useAuth()
+  const canComplete = can('workbench:complete')
   const [orders, setOrders] = useState<Order[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -50,6 +53,10 @@ export default function Workbench() {
   }, [load])
 
   const handleComplete = async (id: number) => {
+    if (!canComplete) {
+      message.warning('当前账号没有出单权限')
+      return
+    }
     try {
       await updateOrderStatus(id, 'completed')
       message.success('订单已标记为完成')
@@ -175,7 +182,12 @@ export default function Workbench() {
                 <div className="workbench-order-footer">
                   <Typography.Text type="secondary">备注：{asText(order.remark, '无')}</Typography.Text>
                   {order.status !== 'completed' && order.status !== 'cancelled' ? (
-                    <Button type="primary" icon={<CheckOutlined />} onClick={() => handleComplete(order.id)}>
+                    <Button
+                      type="primary"
+                      icon={<CheckOutlined />}
+                      onClick={() => handleComplete(order.id)}
+                      disabled={!canComplete}
+                    >
                       出单完成
                     </Button>
                   ) : (

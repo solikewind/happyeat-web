@@ -18,6 +18,7 @@ import {
 } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import type { Table as TableType, TableCategory } from '../api/types'
+import { useAuth } from '../contexts/AuthContext'
 import {
   createTable,
   createTableCategory,
@@ -40,6 +41,8 @@ const TABLE_STATUS = {
 } as const
 
 function CategoryTab() {
+  const { can } = useAuth()
+  const canEditTable = can('table:edit')
   const [list, setList] = useState<TableCategory[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -66,12 +69,20 @@ function CategoryTab() {
   }, [load])
 
   const openCreate = () => {
+    if (!canEditTable) {
+      message.warning('当前账号没有餐桌编辑权限')
+      return
+    }
     setEditingId(null)
     form.resetFields()
     setModalOpen(true)
   }
 
   const openEdit = (record: TableCategory) => {
+    if (!canEditTable) {
+      message.warning('当前账号没有餐桌编辑权限')
+      return
+    }
     setEditingId(record.id)
     form.setFieldsValue({
       name: record.name,
@@ -105,6 +116,10 @@ function CategoryTab() {
   }
 
   const onDelete = async (id: number) => {
+    if (!canEditTable) {
+      message.warning('当前账号没有餐桌编辑权限')
+      return
+    }
     try {
       await deleteTableCategory(id)
       message.success('已删除')
@@ -140,7 +155,7 @@ function CategoryTab() {
               维护前厅区域划分，方便点餐和订单页显示桌台来源。
             </Typography.Text>
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!canEditTable}>
             新建分类
           </Button>
         </div>
@@ -178,10 +193,10 @@ function CategoryTab() {
               width: 156,
               render: (_, record: TableCategory) => (
                 <Space>
-                  <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>
+                  <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} disabled={!canEditTable}>
                     编辑
                   </Button>
-                  <Popconfirm title="确定删除？" onConfirm={() => onDelete(record.id)}>
+                  <Popconfirm title="确定删除？" onConfirm={() => onDelete(record.id)} disabled={!canEditTable}>
                     <Button type="link" size="small" danger icon={<DeleteOutlined />}>
                       删除
                     </Button>
@@ -206,6 +221,7 @@ function CategoryTab() {
         open={modalOpen}
         onOk={onOk}
         onCancel={() => setModalOpen(false)}
+        okButtonProps={{ disabled: !canEditTable }}
         okText="保存"
         cancelText="取消"
         centered
@@ -232,6 +248,8 @@ function CategoryTab() {
 }
 
 function TableListTab() {
+  const { can } = useAuth()
+  const canEditTable = can('table:edit')
   const [list, setList] = useState<TableType[]>([])
   const [categories, setCategories] = useState<TableCategory[]>([])
   const [total, setTotal] = useState(0)
@@ -273,6 +291,10 @@ function TableListTab() {
   const usingCount = list.filter((item) => item.status === 'using').length
 
   const openCreate = async () => {
+    if (!canEditTable) {
+      message.warning('当前账号没有餐桌编辑权限')
+      return
+    }
     setEditingId(null)
     form.resetFields()
     form.setFieldsValue({ status: 'idle' })
@@ -281,6 +303,10 @@ function TableListTab() {
   }
 
   const openEdit = async (record: TableType) => {
+    if (!canEditTable) {
+      message.warning('当前账号没有餐桌编辑权限')
+      return
+    }
     setEditingId(record.id)
     try {
       const { table } = await getTable(record.id)
@@ -328,6 +354,10 @@ function TableListTab() {
   }
 
   const onDelete = async (id: number) => {
+    if (!canEditTable) {
+      message.warning('当前账号没有餐桌编辑权限')
+      return
+    }
     try {
       await deleteTable(id)
       message.success('已删除')
@@ -365,7 +395,7 @@ function TableListTab() {
               options={categories.map((item) => ({ label: item.name, value: item.name }))}
             />
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!canEditTable}>
             新建餐桌
           </Button>
         </div>
@@ -415,10 +445,10 @@ function TableListTab() {
               width: 156,
               render: (_, record: TableType) => (
                 <Space>
-                  <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>
+                  <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} disabled={!canEditTable}>
                     编辑
                   </Button>
-                  <Popconfirm title="确定删除？" onConfirm={() => onDelete(record.id)}>
+                  <Popconfirm title="确定删除？" onConfirm={() => onDelete(record.id)} disabled={!canEditTable}>
                     <Button type="link" size="small" danger icon={<DeleteOutlined />}>
                       删除
                     </Button>
@@ -443,6 +473,7 @@ function TableListTab() {
         open={modalOpen}
         onOk={onOk}
         onCancel={() => setModalOpen(false)}
+        okButtonProps={{ disabled: !canEditTable }}
         okText="保存"
         cancelText="取消"
         centered

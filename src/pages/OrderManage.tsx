@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Button,
   Card,
@@ -20,6 +20,7 @@ import type { Order, Menu, Table as TTable } from '../api/types'
 import { createOrder, getOrder, listOrders, updateOrderStatus } from '../api/order'
 import { listMenus } from '../api/menu'
 import { listTables } from '../api/table'
+import { useAuth } from '../contexts/AuthContext'
 
 const ORDER_TYPE_MAP: Record<string, string> = {
   dine_in: '堂食',
@@ -43,6 +44,9 @@ const STATUS_COLOR_MAP: Record<string, string> = {
 }
 
 export default function OrderManage() {
+  const { can } = useAuth()
+  const canCreateOrder = can('orders:create')
+  const canUpdateOrderStatus = can('orders:update_status')
   const [orders, setOrders] = useState<Order[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -89,6 +93,10 @@ export default function OrderManage() {
   }
 
   const handleUpdateStatus = async (id: number, status: string) => {
+    if (!canUpdateOrderStatus) {
+      message.warning('当前账号没有订单状态更新权限')
+      return
+    }
     try {
       await updateOrderStatus(id, status)
       message.success('订单状态已更新')
@@ -100,6 +108,10 @@ export default function OrderManage() {
   }
 
   const openCreate = async () => {
+    if (!canCreateOrder) {
+      message.warning('当前账号没有新建订单权限')
+      return
+    }
     form.resetFields()
     form.setFieldsValue({ order_type: 'dine_in', items: [{ quantity: 1 }] })
     try {
@@ -117,6 +129,10 @@ export default function OrderManage() {
   }
 
   const onOk = async () => {
+    if (!canCreateOrder) {
+      message.warning('当前账号没有新建订单权限')
+      return
+    }
     const values = await form.validateFields()
     const items = (values.items ?? []).filter((item: { menu_id?: number; quantity?: number }) => item?.menu_id && item?.quantity)
     if (!items.length) {
@@ -202,7 +218,7 @@ export default function OrderManage() {
               options={Object.entries(ORDER_TYPE_MAP).map(([value, label]) => ({ value, label }))}
             />
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!canCreateOrder}>
             新建订单
           </Button>
         </div>
@@ -270,6 +286,7 @@ export default function OrderManage() {
                     size="small"
                     value={record.status}
                     onChange={(status) => handleUpdateStatus(record.id, status)}
+                    disabled={!canUpdateOrderStatus}
                     style={{ width: 108 }}
                     options={Object.entries(STATUS_MAP).map(([value, label]) => ({ value, label }))}
                   />
@@ -293,6 +310,7 @@ export default function OrderManage() {
         open={modalOpen}
         onOk={onOk}
         onCancel={() => setModalOpen(false)}
+        okButtonProps={{ disabled: !canCreateOrder }}
         okText="提交"
         cancelText="取消"
         centered
