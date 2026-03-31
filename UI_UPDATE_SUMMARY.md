@@ -25,8 +25,8 @@
 ## 验证
 - 已检查：本次修改文件无新增 IDE lint 报错。
 - 终端 lint 本轮未成功重跑完成，但当前改动文件的 IDE 检查正常。
-- `npm run lint` 仍失败：剩余为项目原有历史问题，集中在 `contexts`、`hooks`、`utils/stt.ts`。
-- `npm run build` 失败：主要是语音相关历史 TypeScript 问题，未在本次处理范围内。
+- `pnpm lint` 仍失败：剩余为项目原有历史问题，集中在 `contexts`、`hooks`、`utils/stt.ts`。
+- `pnpm build` 失败：主要是语音相关历史 TypeScript 问题，未在本次处理范围内。
 
 ## 后续建议
 - 如需继续，可处理语音模块的历史 lint / build 问题。

@@ -10,7 +10,10 @@ export interface RolePermissionConfig {
 }
 
 interface RemoteRolePermissionResponse {
-  roles: Partial<Record<RoleKey, PermissionKey[]>>
+  roles?: Array<{
+    role?: string
+    permissions?: string[]
+  }>
 }
 
 const REMOTE_BASE = '/central/v1/rbac/role-permissions'
@@ -24,7 +27,13 @@ export async function fetchRolePermissionConfig(): Promise<RolePermissionConfig>
   try {
     const { data } = await api.get<RemoteRolePermissionResponse>(REMOTE_BASE)
     const local = getRolePermissionConfig()
-    const merged = { ...local, ...(data?.roles ?? {}) }
+    const remoteMap = (data?.roles ?? []).reduce<Partial<Record<RoleKey, PermissionKey[]>>>((acc, item) => {
+      if (!item?.role) return acc
+      const role = item.role as RoleKey
+      acc[role] = (item.permissions ?? []) as PermissionKey[]
+      return acc
+    }, {})
+    const merged = { ...local, ...remoteMap }
     return { roles: merged, storageMode: 'remote' }
   } catch (error) {
     if (!isNotFoundError(error)) {

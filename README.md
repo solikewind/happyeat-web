@@ -6,10 +6,10 @@
 
 ```bash
 # 安装依赖（若未安装）
-npm install
+pnpm install
 
 # 启动开发服务，默认 http://localhost:5173
-npm run dev
+pnpm dev
 ```
 
 请先启动后端服务（如 `localhost:8888`），并在 `.env.development` 中配置 `VITE_API_BASE`。
@@ -17,7 +17,7 @@ npm run dev
 ## 构建
 
 ```bash
-npm run build
+pnpm build
 ```
 
 产物在 `dist/`，可部署到任意静态托管。
