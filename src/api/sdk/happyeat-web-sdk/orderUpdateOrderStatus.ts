@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 更新订单状态 PUT /central/v1/order/${param0}/status */
 export async function orderUpdateOrderStatus(

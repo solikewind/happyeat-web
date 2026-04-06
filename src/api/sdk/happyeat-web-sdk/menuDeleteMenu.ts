@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 删除菜单 DELETE /central/v1/menu/${param0} */
 export async function menuDeleteMenu(

@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 删除规格组 DELETE /central/v1/spec/group/${param0} */
 export async function specDeleteSpecGroup(

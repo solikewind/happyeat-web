@@ -3,6 +3,11 @@
 // API 更新时间：
 // API 唯一标识：
 import * as authLogin from "./authLogin";
+import * as iamListIamPermissions from "./iamListIamPermissions";
+import * as iamListIamRoles from "./iamListIamRoles";
+import * as iamAssignIamUserRole from "./iamAssignIamUserRole";
+import * as iamRemoveIamUserRole from "./iamRemoveIamUserRole";
+import * as iamListIamUsers from "./iamListIamUsers";
 import * as menucategoryListMenuCategory from "./menucategoryListMenuCategory";
 import * as menucategoryCreateMenuCategory from "./menucategoryCreateMenuCategory";
 import * as menucategoryGetMenuCategory from "./menucategoryGetMenuCategory";
@@ -17,6 +22,7 @@ import * as orderGetOrder from "./orderGetOrder";
 import * as orderUpdateOrderStatus from "./orderUpdateOrderStatus";
 import * as orderListOrder from "./orderListOrder";
 import * as orderCreateOrder from "./orderCreateOrder";
+import * as rbacSyncCasbinPolicies from "./rbacSyncCasbinPolicies";
 import * as rbacListRolePermission from "./rbacListRolePermission";
 import * as rbacResetRolePermissions from "./rbacResetRolePermissions";
 import * as rbacUpdateRolePermissions from "./rbacUpdateRolePermissions";
@@ -48,6 +54,11 @@ import * as tableCreateTable from "./tableCreateTable";
 import * as workbenchListWorkbenchOrder from "./workbenchListWorkbenchOrder";
 export default {
   authLogin,
+  iamListIamPermissions,
+  iamListIamRoles,
+  iamAssignIamUserRole,
+  iamRemoveIamUserRole,
+  iamListIamUsers,
   menucategoryListMenuCategory,
   menucategoryCreateMenuCategory,
   menucategoryGetMenuCategory,
@@ -62,6 +73,7 @@ export default {
   orderUpdateOrderStatus,
   orderListOrder,
   orderCreateOrder,
+  rbacSyncCasbinPolicies,
   rbacListRolePermission,
   rbacResetRolePermissions,
   rbacUpdateRolePermissions,

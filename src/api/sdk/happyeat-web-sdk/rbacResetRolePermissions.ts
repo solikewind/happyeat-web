@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 重置角色权限（可单角色） POST /central/v1/rbac/role-permissions/reset */
 export async function rbacResetRolePermissions(

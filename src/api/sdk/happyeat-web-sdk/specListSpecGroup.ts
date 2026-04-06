@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 列出规格组 GET /central/v1/spec/groups */
 export async function specListSpecGroup(
@@ -16,7 +16,7 @@ export async function specListSpecGroup(
   return request<{
     groups?: {
       created_at: string;
-      id: number;
+      id: string;
       name: string;
       sort: number;
       updated_at: string;

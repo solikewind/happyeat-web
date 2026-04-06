@@ -2,11 +2,11 @@ import { api } from './client'
 import type { Table, TableCategory } from './types'
 
 export interface UpdateTableBody {
-  id: number
+  id: string
   code: string
   status: string
   capacity: number
-  category_id: number
+  category_id: string
   qr_code?: string
 }
 
@@ -19,16 +19,16 @@ export async function createTableCategory(body: { name: string; description?: st
   await api.post('/central/v1/table/category', body)
 }
 
-export async function getTableCategory(id: number) {
+export async function getTableCategory(id: string) {
   const { data } = await api.get<{ category: TableCategory }>(`/central/v1/table/category/${id}`)
   return data
 }
 
-export async function updateTableCategory(id: number, category: TableCategory) {
+export async function updateTableCategory(id: string, category: TableCategory) {
   await api.put(`/central/v1/table/category/${id}`, { category })
 }
 
-export async function deleteTableCategory(id: number) {
+export async function deleteTableCategory(id: string) {
   await api.delete(`/central/v1/table/category/${id}`)
 }
 
@@ -37,19 +37,19 @@ export async function listTables(params?: { current?: number; pageSize?: number;
   return data
 }
 
-export async function createTable(body: { code: string; status: string; capacity: number; category_id: number; qr_code?: string }) {
+export async function createTable(body: { code: string; status: string; capacity: number; category_id: string; qr_code?: string }) {
   await api.post('/central/v1/tables', body)
 }
 
-export async function getTable(id: number) {
+export async function getTable(id: string) {
   const { data } = await api.get<{ table: Table }>(`/central/v1/table/${id}`)
   return data
 }
 
-export async function updateTable(id: number, table: UpdateTableBody) {
+export async function updateTable(id: string, table: UpdateTableBody) {
   await api.put(`/central/v1/table/${id}`, { table })
 }
 
-export async function deleteTable(id: number) {
+export async function deleteTable(id: string) {
   await api.delete(`/central/v1/table/${id}`)
 }

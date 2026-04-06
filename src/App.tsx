@@ -5,7 +5,7 @@ import zhCN from 'antd/locale/zh_CN'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider, useThemeMode } from './contexts/ThemeContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import type { PermissionKey } from './auth/permissions'
+import { normalizeRole, type PermissionKey } from './auth/permissions'
 import './App.css'
 
 const MainLayout = lazy(() => import('./layouts/MainLayout'))
@@ -13,6 +13,7 @@ const Login = lazy(() => import('./pages/Login'))
 const Home = lazy(() => import('./pages/Home'))
 const MenuManage = lazy(() => import('./pages/MenuManage'))
 const TableManage = lazy(() => import('./pages/TableManage'))
+const TableFloorMap = lazy(() => import('./pages/TableFloorMap'))
 const OrderManage = lazy(() => import('./pages/OrderManage'))
 const OrderDesk = lazy(() => import('./pages/OrderDesk'))
 const Workbench = lazy(() => import('./pages/Workbench'))
@@ -25,8 +26,15 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 function PermissionRoute({ permission, children }: { permission: PermissionKey; children: ReactNode }) {
-  const { can } = useAuth()
-  if (!can(permission)) return <Navigate to="/unauthorized" replace />
+  const { can, role, logout } = useAuth()
+  if (!can(permission)) {
+    // 无法识别角色（缺 role、非法 JWT 等）视为登录态无效，回登录页；已知角色但无本页权限仍走 403。
+    if (normalizeRole(role) === 'unknown') {
+      logout()
+      return <Navigate to="/login" replace />
+    }
+    return <Navigate to="/unauthorized" replace />
+  }
   return <>{children}</>
 }
 
@@ -87,6 +95,14 @@ function AppRoutes() {
             element={
               <PermissionRoute permission="table:view">
                 <TableManage />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="table-map"
+            element={
+              <PermissionRoute permission="table:view">
+                <TableFloorMap />
               </PermissionRoute>
             }
           />

@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 创建菜单种类 POST /central/v1/menu/category */
 export async function menucategoryCreateMenuCategory(

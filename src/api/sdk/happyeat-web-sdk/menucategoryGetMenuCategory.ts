@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 获取菜单种类 GET /central/v1/menu/category/${param0} */
 export async function menucategoryGetMenuCategory(
@@ -13,7 +13,7 @@ export async function menucategoryGetMenuCategory(
     category?: {
       created_at?: string;
       description?: string;
-      id?: number;
+      id?: string;
       name?: string;
       updated_at?: string;
     };

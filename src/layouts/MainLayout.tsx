@@ -4,6 +4,7 @@ import { Avatar, Breadcrumb, Button, Drawer, Dropdown, Layout, Menu, Space, Tool
 import {
   DashboardOutlined,
   HomeOutlined,
+  LayoutOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuOutlined,
@@ -48,6 +49,13 @@ const navItems = [
   },
   { key: '/menu', icon: <MenuOutlined />, label: '菜单管理', description: '维护菜品与分类信息', permission: 'menu:view' as PermissionKey },
   { key: '/tables', icon: <TableOutlined />, label: '餐桌管理', description: '查看桌台状态和容量', permission: 'table:view' as PermissionKey },
+  {
+    key: '/table-map',
+    icon: <LayoutOutlined />,
+    label: '餐桌平面图',
+    description: '厅面布局与订单高亮',
+    permission: 'table:view' as PermissionKey,
+  },
   {
     key: '/permissions',
     icon: <SettingOutlined />,

@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 更新餐桌 PUT /central/v1/table/${param0} */
 export async function tableUpdateTable(
@@ -8,7 +8,8 @@ export async function tableUpdateTable(
   params: API.tableUpdateTableParams,
   body: {
     capacity?: number;
-    category_id: number;
+    /** 十进制整数字符串（uint64，避免 JS Number 精度丢失） */
+    category_id: string;
     code: string;
     qr_code?: string;
     status: string;

@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 获取单个订单 GET /central/v1/order/${param0} */
 export async function orderGetOrder(
@@ -12,7 +12,7 @@ export async function orderGetOrder(
   return request<{
     order?: {
       created_at?: string;
-      id?: number;
+      id?: string;
       items?: {
         amount: number;
         menu_name: string;
@@ -26,7 +26,7 @@ export async function orderGetOrder(
       status?: string;
       table_category?: string;
       table_code?: string;
-      table_id?: number;
+      table_id?: string;
       total_amount?: number;
       updated_at?: string;
     };

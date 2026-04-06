@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 更新规格项 PUT /central/v1/spec/item/${param0} */
 export async function specUpdateSpecItem(
@@ -9,7 +9,8 @@ export async function specUpdateSpecItem(
   body: {
     default_price?: number;
     name: string;
-    spec_group_id: number;
+    /** 十进制整数字符串（uint64，避免 JS Number 精度丢失） */
+    spec_group_id: string;
   },
   options?: { [key: string]: any }
 ) {

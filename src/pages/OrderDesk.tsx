@@ -35,9 +35,9 @@ export default function OrderDesk() {
   const [tables, setTables] = useState<TableType[]>([])
   const [tablesLoading, setTablesLoading] = useState(false)
   const [orderType, setOrderType] = useState<string>('dine_in')
-  const [tableId, setTableId] = useState<number | undefined>(undefined)
+  const [tableId, setTableId] = useState<string | undefined>(undefined)
   const [submitting, setSubmitting] = useState(false)
-  const [cardSelections, setCardSelections] = useState<Record<number, { quantity: number; selectedSpecs: MenuSpec[] }>>({})
+  const [cardSelections, setCardSelections] = useState<Record<string, { quantity: number; selectedSpecs: MenuSpec[] }>>({})
 
   const { isSupported: sttSupported, listening, transcript, finalTranscript, start: startSTT, stop: stopSTT } = useSTT({
     lang: 'zh-CN',
@@ -181,7 +181,7 @@ export default function OrderDesk() {
 
       const successItems: Array<{ menu: Menu; quantity: number }> = []
       const failedNames: string[] = []
-      const pickedMenuIds = new Set<number>()
+      const pickedMenuIds = new Set<string>()
       const parsedItems = parseOrderItems(text)
 
       parsedItems.forEach((item) => {

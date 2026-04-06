@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 列出规格项 GET /central/v1/spec/items */
 export async function specListSpecItem(
@@ -10,7 +10,8 @@ export async function specListSpecItem(
     current?: number;
     name?: string;
     pageSize?: number;
-    spec_group_id?: number;
+    /** 十进制整数字符串（uint64，避免 JS Number 精度丢失） */
+    spec_group_id?: string;
   },
   options?: { [key: string]: any }
 ) {
@@ -18,9 +19,9 @@ export async function specListSpecItem(
     items?: {
       created_at: string;
       default_price: number;
-      id: number;
+      id: string;
       name: string;
-      spec_group_id: number;
+      spec_group_id: string;
       updated_at: string;
     }[];
     total?: number;

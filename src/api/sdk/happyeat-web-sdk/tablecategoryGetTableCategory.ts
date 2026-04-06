@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 获取餐桌类别 GET /central/v1/table/category/${param0} */
 export async function tablecategoryGetTableCategory(
@@ -10,7 +10,7 @@ export async function tablecategoryGetTableCategory(
 ) {
   const { id: param0, ...queryParams } = params;
   return request<{
-    category?: { description?: string; id?: number; name?: string };
+    category?: { description?: string; id?: string; name?: string };
   }>(`/central/v1/table/category/${param0}`, {
     method: "GET",
     params: { ...queryParams },

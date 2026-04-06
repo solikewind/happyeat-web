@@ -48,7 +48,7 @@ function CategoryTab() {
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [modalOpen, setModalOpen] = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form] = Form.useForm()
 
   const load = useCallback(async () => {
@@ -115,7 +115,7 @@ function CategoryTab() {
     }
   }
 
-  const onDelete = async (id: number) => {
+  const onDelete = async (id: string) => {
     if (!canEditTable) {
       message.warning('当前账号没有餐桌编辑权限')
       return
@@ -156,15 +156,18 @@ function CategoryTab() {
           rowKey="id"
           loading={loading}
           dataSource={list}
-          scroll={{ x: 760 }}
+          tableLayout="fixed"
+          scroll={{ x: 1000 }}
           locale={{
             emptyText: <Empty className="table-empty-state" description="暂无分类，先创建前厅区域分类" />,
           }}
           columns={[
-            { title: 'ID', dataIndex: 'id', width: 80 },
+            { title: 'ID', dataIndex: 'id', width: 200, className: 'table-col-id' },
             {
               title: '分类名称',
               dataIndex: 'name',
+              width: 160,
+              ellipsis: true,
               render: (value: string) => <Tag color="blue">{value}</Tag>,
             },
             {
@@ -176,13 +179,15 @@ function CategoryTab() {
             {
               title: '创建日期',
               dataIndex: 'create_at',
-              width: 160,
+              width: 172,
               render: (ts: number | undefined) =>
                 ts ? new Date(ts * 1000).toLocaleString('zh-CN') : '-',
             },
             {
               title: '操作',
-              width: 156,
+              width: 168,
+              fixed: 'right',
+              className: 'table-col-actions',
               render: (_, record: TableCategory) => (
                 <Space>
                   <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} disabled={!canEditTable}>
@@ -249,7 +254,7 @@ function TableListTab() {
   const [page, setPage] = useState(1)
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>()
   const [modalOpen, setModalOpen] = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form] = Form.useForm()
 
   const loadCategories = useCallback(async () => {
@@ -345,7 +350,7 @@ function TableListTab() {
     }
   }
 
-  const onDelete = async (id: number) => {
+  const onDelete = async (id: string) => {
     if (!canEditTable) {
       message.warning('当前账号没有餐桌编辑权限')
       return
@@ -389,22 +394,24 @@ function TableListTab() {
           rowKey="id"
           loading={loading}
           dataSource={list}
-          scroll={{ x: 860 }}
+          tableLayout="fixed"
+          scroll={{ x: 1000 }}
           locale={{
             emptyText: <Empty className="table-empty-state" description="暂无餐桌，先新增一个桌台吧" />,
           }}
           columns={[
-            { title: 'ID', dataIndex: 'id', width: 80 },
+            { title: 'ID', dataIndex: 'id', width: 200, className: 'table-col-id' },
             {
               title: '桌号',
               dataIndex: 'code',
-              width: 100,
+              width: 112,
+              ellipsis: true,
               render: (value: string) => <Tag color="blue">{value}</Tag>,
             },
             {
               title: '状态',
               dataIndex: 'status',
-              width: 100,
+              width: 108,
               render: (status: keyof typeof TABLE_STATUS) => (
                 <Tag color={status === 'using' ? 'orange' : status === 'idle' ? 'green' : 'default'}>
                   {TABLE_STATUS[status] ?? status}
@@ -414,18 +421,21 @@ function TableListTab() {
             {
               title: '可坐人数',
               dataIndex: 'capacity',
-              width: 100,
+              width: 104,
               render: (value: number) => `${value} 人`,
             },
             {
               title: '分类',
               dataIndex: 'category_id',
-              width: 120,
-              render: (id: number) => <Tag>{categoryMap[id] ?? id}</Tag>,
+              width: 140,
+              ellipsis: true,
+              render: (id: string) => <Tag>{categoryMap[id] ?? id}</Tag>,
             },
             {
               title: '操作',
-              width: 156,
+              width: 168,
+              fixed: 'right',
+              className: 'table-col-actions',
               render: (_, record: TableType) => (
                 <Space>
                   <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} disabled={!canEditTable}>

@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 更新角色权限（全量覆盖） PUT /central/v1/rbac/role-permissions/${param0} */
 export async function rbacUpdateRolePermissions(

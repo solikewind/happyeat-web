@@ -41,7 +41,7 @@ function CategoryTab() {
   const [page, setPage] = useState(1)
   const pageSize = 10
   const [modalOpen, setModalOpen] = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form] = Form.useForm()
 
   const load = useCallback(async () => {
@@ -108,7 +108,7 @@ function CategoryTab() {
     }
   }
 
-  const onDelete = async (id: number) => {
+  const onDelete = async (id: string) => {
     if (!canEditMenu) {
       message.warning('当前账号没有菜单编辑权限')
       return
@@ -149,15 +149,18 @@ function CategoryTab() {
           rowKey="id"
           loading={loading}
           dataSource={list}
-          scroll={{ x: 760 }}
+          tableLayout="fixed"
+          scroll={{ x: 1000 }}
           locale={{
             emptyText: <Empty className="table-empty-state" description="暂无分类，先创建一个分类吧" />,
           }}
           columns={[
-            { title: 'ID', dataIndex: 'id', width: 80 },
+            { title: 'ID', dataIndex: 'id', width: 200, className: 'table-col-id' },
             {
               title: '分类名称',
               dataIndex: 'name',
+              width: 160,
+              ellipsis: true,
               render: (value: string) => <Tag color="blue">{value}</Tag>,
             },
             {
@@ -169,13 +172,15 @@ function CategoryTab() {
             {
               title: '创建日期',
               dataIndex: 'create_at',
-              width: 180,
+              width: 172,
               render: (ts: number | undefined) =>
                 ts ? new Date(ts * 1000).toLocaleString('zh-CN') : '-',
             },
             {
               title: '操作',
-              width: 156,
+              width: 168,
+              fixed: 'right',
+              className: 'table-col-actions',
               render: (_, record: MenuCategory) => (
                 <Space>
                   <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} disabled={!canEditMenu}>
@@ -245,7 +250,7 @@ function MenuListTab() {
   const [nameSearch, setNameSearch] = useState<string | undefined>()
   const pageSize = 10
   const [modalOpen, setModalOpen] = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form] = Form.useForm()
 
   const loadCategories = useCallback(async () => {
@@ -332,7 +337,7 @@ function MenuListTab() {
         await createMenu({
           name: values.name,
           price: Number(values.price),
-          category_id: Number(values.category_id),
+          category_id: String(values.category_id),
           description: values.description || undefined,
           image: values.image || undefined,
           specs: specs.length ? specs : undefined,
@@ -343,7 +348,7 @@ function MenuListTab() {
           id: editingId,
           name: values.name,
           price: Number(values.price),
-          category_id: Number(values.category_id),
+          category_id: String(values.category_id),
           description: values.description || undefined,
           image: values.image || undefined,
           specs: specs.length ? specs : undefined,
@@ -357,7 +362,7 @@ function MenuListTab() {
     }
   }
 
-  const onDelete = async (id: number) => {
+  const onDelete = async (id: string) => {
     if (!canEditMenu) {
       message.warning('当前账号没有菜单编辑权限')
       return
@@ -423,16 +428,17 @@ function MenuListTab() {
           rowKey="id"
           loading={loading}
           dataSource={menus}
-          scroll={{ x: 980 }}
+          tableLayout="fixed"
+          scroll={{ x: 1240 }}
           locale={{
             emptyText: <Empty className="table-empty-state" description="暂无菜品，先新增一道菜品吧" />,
           }}
           columns={[
-            { title: 'ID', dataIndex: 'id', width: 80 },
+            { title: 'ID', dataIndex: 'id', width: 200, className: 'table-col-id' },
             {
               title: '图片',
               dataIndex: 'image',
-              width: 84,
+              width: 88,
               render: (url: string | undefined) =>
                 url ? (
                   <div className="table-thumb">
@@ -448,18 +454,20 @@ function MenuListTab() {
                   <Tag>无图</Tag>
                 ),
             },
-            { title: '菜品名称', dataIndex: 'name' },
+            { title: '菜品名称', dataIndex: 'name', width: 200, ellipsis: true },
             {
               title: '价格',
               dataIndex: 'price',
-              width: 100,
+              width: 108,
+              className: 'table-col-amount',
               render: (value: number) => <Tag color="red">¥{value.toFixed(2)}</Tag>,
             },
             {
               title: '分类',
               dataIndex: 'category_id',
-              width: 120,
-              render: (id: number) => <Tag color="blue">{categoryMap[id] ?? id}</Tag>,
+              width: 140,
+              ellipsis: true,
+              render: (id: string) => <Tag color="blue">{categoryMap[id] ?? id}</Tag>,
             },
             {
               title: '描述',
@@ -469,7 +477,9 @@ function MenuListTab() {
             },
             {
               title: '操作',
-              width: 156,
+              width: 168,
+              fixed: 'right',
+              className: 'table-col-actions',
               render: (_, record: Menu) => (
                 <Space>
                   <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} disabled={!canEditMenu}>

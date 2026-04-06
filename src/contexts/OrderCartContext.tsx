@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 
 export interface CartItem {
-  menuId: number
+  menuId: string
   name: string
   price: number
   quantity: number
@@ -12,7 +12,7 @@ export interface CartItem {
 interface OrderCartContextValue {
   cart: CartItem[]
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>
-  updateCartQty: (menuId: number, specInfo: string | undefined, delta: number) => void
+  updateCartQty: (menuId: string, specInfo: string | undefined, delta: number) => void
   cartTotal: number
   clearCart: () => void
 }
@@ -22,7 +22,7 @@ const OrderCartContext = createContext<OrderCartContextValue | null>(null)
 export function OrderCartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([])
 
-  const updateCartQty = useCallback((menuId: number, specInfo: string | undefined, delta: number) => {
+  const updateCartQty = useCallback((menuId: string, specInfo: string | undefined, delta: number) => {
     setCart((prev) =>
       prev
         .map((i) =>

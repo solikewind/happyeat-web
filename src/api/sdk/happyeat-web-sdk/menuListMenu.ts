@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 列出菜单 GET /central/v1/menus */
 export async function menuListMenu(
@@ -10,7 +10,7 @@ export async function menuListMenu(
     /** 按分类名字筛选 */
     category?: string;
     /** 按分类id筛选 */
-    category_id?: number;
+    category_id?: string;
     current?: number;
     name?: string;
     pageSize?: number;
@@ -19,18 +19,18 @@ export async function menuListMenu(
 ) {
   return request<{
     menus?: {
-      category_id: number;
+      category_id: string;
       created_at: string;
       description?: string;
-      id: number;
+      id: string;
       image?: string;
       name: string;
       price: number;
       specs?: {
-        category_spec_id?: number;
+        category_spec_id?: string;
         price_delta: number;
         sort: number;
-        spec_item_id?: number;
+        spec_item_id?: string;
       }[];
       updated_at: string;
     }[];

@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 更新菜单种类 PUT /central/v1/menu/category/${param0} */
 export async function menucategoryUpdateMenuCategory(

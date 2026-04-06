@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 创建订单 POST /central/v1/orders */
 export async function orderCreateOrder(
@@ -15,7 +15,7 @@ export async function orderCreateOrder(
     order_type: string;
     remark?: string;
     /** 堂食必填 */
-    table_id?: number;
+    table_id?: string;
     total_amount: number;
   },
   options?: { [key: string]: any }
@@ -23,7 +23,7 @@ export async function orderCreateOrder(
   return request<{
     order?: {
       created_at?: string;
-      id?: number;
+      id?: string;
       items?: {
         amount: number;
         menu_name: string;
@@ -37,7 +37,7 @@ export async function orderCreateOrder(
       status?: string;
       table_category?: string;
       table_code?: string;
-      table_id?: number;
+      table_id?: string;
       total_amount?: number;
       updated_at?: string;
     };

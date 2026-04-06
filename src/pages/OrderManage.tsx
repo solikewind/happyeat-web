@@ -104,7 +104,7 @@ export default function OrderManage() {
     load()
   }, [load])
 
-  const openDetail = async (id: number) => {
+  const openDetail = async (id: string) => {
     try {
       const { order } = await getOrder(id)
       setDetailOrder(order)
@@ -114,7 +114,7 @@ export default function OrderManage() {
     }
   }
 
-  const handleUpdateStatus = async (id: number, status: string) => {
+  const handleUpdateStatus = async (id: string, status: string) => {
     if (!canUpdateOrderStatus) {
       message.warning('当前账号没有订单状态更新权限')
       return
@@ -156,7 +156,7 @@ export default function OrderManage() {
       return
     }
     const values = await form.validateFields()
-    const items = (values.items ?? []).filter((item: { menu_id?: number; quantity?: number }) => item?.menu_id && item?.quantity)
+    const items = (values.items ?? []).filter((item: { menu_id?: string; quantity?: number }) => item?.menu_id && item?.quantity)
     if (!items.length) {
       message.error('请至少添加一道菜品')
       return
@@ -164,7 +164,7 @@ export default function OrderManage() {
 
     const menuMap = Object.fromEntries(menus.map((menu) => [menu.id, menu]))
     let totalAmount = 0
-    const bodyItems = items.map((item: { menu_id: number; quantity: number; spec_info?: string }) => {
+    const bodyItems = items.map((item: { menu_id: string; quantity: number; spec_info?: string }) => {
       const menu = menuMap[item.menu_id]
       const unitPrice = menu?.price ?? 0
       totalAmount += unitPrice * item.quantity
@@ -239,33 +239,36 @@ export default function OrderManage() {
           rowKey="id"
           loading={loading}
           dataSource={orders}
-          scroll={{ x: 1180 }}
+          tableLayout="fixed"
+          scroll={{ x: 1380 }}
           locale={{ emptyText: <Empty className="table-empty-state" description="暂无订单记录" /> }}
           columns={[
-            { title: 'ID', dataIndex: 'id', width: 70 },
-            { title: '订单号', dataIndex: 'order_no', width: 180, ellipsis: true },
+            { title: 'ID', dataIndex: 'id', width: 220, className: 'table-col-id' },
+            { title: '订单号', dataIndex: 'order_no', width: 196, ellipsis: true },
             {
               title: '类型',
               dataIndex: 'order_type',
-              width: 110,
+              width: 104,
               render: (value: string) => <Tag color={value === 'dine_in' ? 'blue' : 'orange'}>{ORDER_TYPE_MAP[value] ?? value}</Tag>,
             },
             {
               title: '状态',
               dataIndex: 'status',
-              width: 110,
+              width: 108,
               render: (value: string) => <Tag color={STATUS_COLOR_MAP[value]}>{STATUS_MAP[value] ?? value}</Tag>,
             },
             {
               title: '金额',
               dataIndex: 'total_amount',
-              width: 110,
+              width: 112,
+              className: 'table-col-amount',
               render: (value: number) => <Tag color="red">¥{value?.toFixed(2) ?? '0.00'}</Tag>,
             },
             {
               title: '桌台',
               dataIndex: 'table_code',
-              width: 130,
+              width: 152,
+              ellipsis: true,
               render: (code: string | undefined, record: Order) => {
                 if (!code) return '-'
                 return <Tag color="cyan">{record.table_category ? `${record.table_category}-${code}` : code}</Tag>
@@ -274,21 +277,23 @@ export default function OrderManage() {
             {
               title: '创建时间',
               dataIndex: 'create_at',
-              width: 180,
+              width: 172,
               render: (value: number) => (value ? new Date(value * 1000).toLocaleString('zh-CN') : '-'),
             },
             {
               title: '备注',
               dataIndex: 'remark',
+              width: 160,
               ellipsis: true,
               render: (value?: string) => value || '-',
             },
             {
               title: '操作',
-              width: 190,
+              width: 212,
               fixed: 'right',
+              className: 'table-col-actions',
               render: (_: unknown, record: Order) => (
-                <Space wrap>
+                <Space wrap size={4}>
                   <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(record.id)}>
                     查看
                   </Button>
@@ -297,7 +302,7 @@ export default function OrderManage() {
                     value={record.status}
                     onChange={(status) => handleUpdateStatus(record.id, status)}
                     disabled={!canUpdateOrderStatus}
-                    style={{ width: 108 }}
+                    style={{ width: 118 }}
                     options={Object.entries(STATUS_MAP).map(([value, label]) => ({ value, label }))}
                   />
                 </Space>
@@ -409,6 +414,11 @@ export default function OrderManage() {
         {detailOrder ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Descriptions column={2} bordered size="small">
+              <Descriptions.Item label="订单 ID" span={2}>
+                <Typography.Text code copyable className="order-detail-id">
+                  {detailOrder.id}
+                </Typography.Text>
+              </Descriptions.Item>
               <Descriptions.Item label="订单号">{detailOrder.order_no}</Descriptions.Item>
               <Descriptions.Item label="订单类型">{ORDER_TYPE_MAP[detailOrder.order_type] ?? detailOrder.order_type}</Descriptions.Item>
               <Descriptions.Item label="状态">
@@ -435,11 +445,31 @@ export default function OrderManage() {
                   pagination={false}
                   dataSource={detailOrder.items}
                   columns={[
-                    { title: '菜品', dataIndex: 'menu_name' },
-                    { title: '规格', dataIndex: 'spec_info', render: (value?: string) => value || '-' },
-                    { title: '数量', dataIndex: 'quantity', width: 90 },
-                    { title: '单价', dataIndex: 'unit_price', width: 110, render: (value: number) => `¥${value?.toFixed(2) ?? '0.00'}` },
-                    { title: '金额', dataIndex: 'amount', width: 110, render: (value: number) => `¥${value?.toFixed(2) ?? '0.00'}` },
+                    { title: '菜品', dataIndex: 'menu_name', ellipsis: true },
+                    {
+                      title: '规格',
+                      dataIndex: 'spec_info',
+                      width: 140,
+                      ellipsis: true,
+                      render: (value?: string) => value || '-',
+                    },
+                    { title: '数量', dataIndex: 'quantity', width: 72, align: 'right' },
+                    {
+                      title: '单价',
+                      dataIndex: 'unit_price',
+                      width: 104,
+                      align: 'right',
+                      className: 'table-col-amount',
+                      render: (value: number) => `¥${value?.toFixed(2) ?? '0.00'}`,
+                    },
+                    {
+                      title: '金额',
+                      dataIndex: 'amount',
+                      width: 104,
+                      align: 'right',
+                      className: 'table-col-amount',
+                      render: (value: number) => `¥${value?.toFixed(2) ?? '0.00'}`,
+                    },
                   ]}
                 />
               ) : (

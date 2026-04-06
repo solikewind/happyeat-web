@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 获取规格项 GET /central/v1/spec/item/${param0} */
 export async function specGetSpecItem(
@@ -13,9 +13,9 @@ export async function specGetSpecItem(
     item?: {
       created_at?: string;
       default_price?: number;
-      id?: number;
+      id?: string;
       name?: string;
-      spec_group_id?: number;
+      spec_group_id?: string;
       updated_at?: string;
     };
   }>(`/central/v1/spec/item/${param0}`, {

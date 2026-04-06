@@ -36,7 +36,7 @@ export default function Workbench() {
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
-  const [expandedOrderIds, setExpandedOrderIds] = useState<Set<number>>(new Set())
+  const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -55,7 +55,7 @@ export default function Workbench() {
     load()
   }, [load])
 
-  const handleComplete = async (id: number) => {
+  const handleComplete = async (id: string) => {
     if (!canComplete) {
       message.warning('当前账号没有出单权限')
       return
@@ -69,7 +69,7 @@ export default function Workbench() {
     }
   }
 
-  const toggleOrderItems = (orderId: number) => {
+  const toggleOrderItems = (orderId: string) => {
     setExpandedOrderIds((prev) => {
       const next = new Set(prev)
       if (next.has(orderId)) {

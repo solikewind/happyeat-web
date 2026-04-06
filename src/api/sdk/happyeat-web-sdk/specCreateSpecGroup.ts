@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 创建规格组 POST /central/v1/spec/group */
 export async function specCreateSpecGroup(

@@ -18,20 +18,20 @@ export async function listOrders(params?: {
   pageSize?: number
   status?: string
   order_type?: string
-  table_id?: number
+  table_id?: string
 }) {
   const { data } = await api.get<{ orders: Order[]; total: number }>('/central/v1/orders', { params })
   return normalizeOrderList(data)
 }
 
-export async function getOrder(id: number) {
+export async function getOrder(id: string) {
   const { data } = await api.get<{ order: Order }>(`/central/v1/order/${id}`)
   return data
 }
 
 export async function createOrder(body: {
   order_type: string
-  table_id?: number
+  table_id?: string
   items: CreateOrderItem[]
   total_amount: number
   remark?: string
@@ -40,7 +40,7 @@ export async function createOrder(body: {
   return data
 }
 
-export async function updateOrderStatus(id: number, status: string) {
+export async function updateOrderStatus(id: string, status: string) {
   await api.put(`/central/v1/order/${id}/status`, { status })
 }
 

@@ -12,7 +12,7 @@ export interface LoginReply {
 
 /** 菜单分类（与后端 MenuCategory 一致） */
 export interface MenuCategory {
-  id: number
+  id: string
   name: string
   description?: string
   create_at?: number
@@ -28,10 +28,10 @@ export interface MenuSpec {
 }
 
 export interface Menu {
-  id: number
+  id: string
   name: string
   price: number
-  category_id: number
+  category_id: string
   description?: string
   image?: string
   specs?: MenuSpec[]
@@ -41,18 +41,18 @@ export interface Menu {
 
 /** 餐桌分类 */
 export interface TableCategory {
-  id: number
+  id: string
   name: string
   description?: string
   create_at?: number
 }
 
 export interface Table {
-  id: number
+  id: string
   code: string
   status: string
   capacity: number
-  category_id: number
+  category_id: string
   qr_code?: string
   create_at: number
   update_at: number
@@ -67,12 +67,12 @@ export interface OrderItem {
 }
 
 export interface Order {
-  id: number
+  id: string
   order_no: string
   order_type: string
   status: string
   total_amount: number
-  table_id?: number
+  table_id?: string
   table_code?: string // 桌号（堂食时显示，外带为空）
   table_category?: string // 餐桌类别（如大厅、包间）
   remark?: string

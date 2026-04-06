@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 列出菜单种类 GET /central/v1/menu/categories */
 export async function menucategoryListMenuCategory(
@@ -17,7 +17,7 @@ export async function menucategoryListMenuCategory(
     categories?: {
       created_at: string;
       description?: string;
-      id: number;
+      id: string;
       name: string;
       updated_at: string;
     }[];

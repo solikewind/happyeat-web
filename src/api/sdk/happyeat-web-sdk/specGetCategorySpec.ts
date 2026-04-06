@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 获取分类规格模板 GET /central/v1/spec/category-spec/${param0} */
 export async function specGetCategorySpec(
@@ -11,9 +11,9 @@ export async function specGetCategorySpec(
   const { id: param0, ...queryParams } = params;
   return request<{
     spec?: {
-      category_id?: number;
+      category_id?: string;
       created_at?: string;
-      id?: number;
+      id?: string;
       price_delta?: number;
       sort?: number;
       spec_type?: string;

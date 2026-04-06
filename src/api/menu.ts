@@ -31,18 +31,21 @@ export async function createMenuCategory(body: { name: string; description?: str
 }
 
 /** 获取单个分类 */
-export async function getMenuCategory(id: number): Promise<{ category: MenuCategory }> {
+export async function getMenuCategory(id: string): Promise<{ category: MenuCategory }> {
   const { data } = await api.get<{ category: MenuCategory }>(`/central/v1/menu/category/${id}`)
   return data
 }
 
 /** 更新分类：后端要整份 category（含 id） */
-export async function updateMenuCategory(id: number, category: MenuCategory): Promise<void> {
-  await api.put(`/central/v1/menu/category/${id}`, { category })
+export async function updateMenuCategory(id: string, category: MenuCategory): Promise<void> {
+  await api.put(`/central/v1/menu/category/${id}`, {
+    name: category.name,
+    description: category.description ?? '',
+  })
 }
 
 /** 删除分类 */
-export async function deleteMenuCategory(id: number): Promise<void> {
+export async function deleteMenuCategory(id: string): Promise<void> {
   await api.delete(`/central/v1/menu/category/${id}`)
 }
 
@@ -69,14 +72,14 @@ export async function listMenus(params?: ListMenusParams): Promise<ListMenusRes>
 export interface CreateMenuBody {
   name: string
   price: number
-  category_id: number
+  category_id: string
   description?: string
   image?: string
   specs?: MenuSpec[]
 }
 
 export interface UpdateMenuBody extends CreateMenuBody {
-  id: number
+  id: string
 }
 
 /** 创建菜品 */
@@ -85,17 +88,17 @@ export async function createMenu(body: CreateMenuBody): Promise<void> {
 }
 
 /** 获取单个菜品 */
-export async function getMenu(id: number): Promise<{ menu: Menu }> {
+export async function getMenu(id: string): Promise<{ menu: Menu }> {
   const { data } = await api.get<{ menu: Menu }>(`/central/v1/menu/${id}`)
   return data
 }
 
 /** 更新菜品：后端要整份 menu（含 id） */
-export async function updateMenu(id: number, menu: UpdateMenuBody): Promise<void> {
+export async function updateMenu(id: string, menu: UpdateMenuBody): Promise<void> {
   await api.put(`/central/v1/menu/${id}`, { menu })
 }
 
 /** 删除菜品 */
-export async function deleteMenu(id: number): Promise<void> {
+export async function deleteMenu(id: string): Promise<void> {
   await api.delete(`/central/v1/menu/${id}`)
 }

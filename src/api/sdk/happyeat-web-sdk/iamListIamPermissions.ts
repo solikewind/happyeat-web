@@ -2,21 +2,22 @@
 /* eslint-disable */
 import request from "../../request";
 
-/** 列出餐桌类别 GET /central/v1/table/categories */
-export async function tablecategoryListTableCategory(
+/** 分页列出权限点（iam_permissions） GET /central/v1/iam/permissions */
+export async function iamListIamPermissions(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.tablecategoryListTableCategoryParams,
+  params: API.iamListIAMPermissionsParams,
   body: {
     current?: number;
-    name?: string;
+    /** 可选：按 code/description 模糊筛 */
+    keyword?: string;
     pageSize?: number;
   },
   options?: { [key: string]: any }
 ) {
   return request<{
-    categories?: { description?: string; id: string; name: string }[];
+    permissions?: { code: string; description: string }[];
     total?: number;
-  }>("/central/v1/table/categories", {
+  }>("/central/v1/iam/permissions", {
     method: "GET",
     headers: {
       "Content-Type": "application/json",

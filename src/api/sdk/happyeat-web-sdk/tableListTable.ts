@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 列出餐桌 GET /central/v1/tables */
 export async function tableListTable(
@@ -10,7 +10,7 @@ export async function tableListTable(
     /** 按分类名字筛选 */
     category?: string;
     /** 按分类id筛选 */
-    category_id?: number;
+    category_id?: string;
     code?: string;
     current?: number;
     pageSize?: number;
@@ -21,10 +21,10 @@ export async function tableListTable(
   return request<{
     tables?: {
       capacity?: number;
-      category_id: number;
+      category_id: string;
       code: string;
       created_at: string;
-      id: number;
+      id: string;
       qr_code?: string;
       status: string;
       updated_at: string;

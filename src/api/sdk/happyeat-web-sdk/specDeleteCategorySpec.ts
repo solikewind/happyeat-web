@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 删除分类规格模板 DELETE /central/v1/spec/category-spec/${param0} */
 export async function specDeleteCategorySpec(

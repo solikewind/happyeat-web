@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 获取单个餐桌 GET /central/v1/table/${param0} */
 export async function tableGetTable(
@@ -12,10 +12,10 @@ export async function tableGetTable(
   return request<{
     table?: {
       capacity?: number;
-      category_id?: number;
+      category_id?: string;
       code?: string;
       created_at?: string;
-      id?: number;
+      id?: string;
       qr_code?: string;
       status?: string;
       updated_at?: string;

@@ -1,54 +1,103 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Alert, Button, Card, Col, Row, Space, Statistic, Typography, message } from 'antd'
+import { Button, Card, Col, Row, Space, Statistic, Typography, message } from 'antd'
 import {
   ArrowRightOutlined,
+  BulbOutlined,
   DashboardOutlined,
-  FireOutlined,
+  LayoutOutlined,
   MenuOutlined,
   ShoppingCartOutlined,
   ShoppingOutlined,
   TableOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons'
 import { listMenus } from '../api/menu'
 import { listOrders } from '../api/order'
 import { listTables } from '../api/table'
 import type { Order, Table } from '../api/types'
+import type { ReactNode } from 'react'
 
 const HISTORY_DAYS = 14
 const HISTORY_PAGE_SIZE = 200
 const HISTORY_MAX_PAGES = 6
 
-const links = [
+type EntryAccent = 'blue' | 'violet' | 'amber' | 'emerald' | 'slate'
+
+interface QuickEntry {
+  path: string
+  title: string
+  description: string
+  icon: ReactNode
+  accent: EntryAccent
+}
+
+interface EntryGroup {
+  title: string
+  hint: string
+  entries: QuickEntry[]
+}
+
+const entryGroups: EntryGroup[] = [
   {
-    path: '/menu',
-    title: '菜单管理',
-    description: '维护分类、菜品和规格，保障点餐页展示完整。',
-    icon: <MenuOutlined />,
+    title: '前厅点单',
+    hint: '收银与接单主战场',
+    entries: [
+      {
+        path: '/order-desk',
+        title: '点餐台',
+        description: '开台点单、规格备注与语音辅助，一单到底。',
+        icon: <ShoppingCartOutlined />,
+        accent: 'amber',
+      },
+      {
+        path: '/orders',
+        title: '订单管理',
+        description: '检索、改状态、处理异常，订单全链路可视。',
+        icon: <ShoppingOutlined />,
+        accent: 'blue',
+      },
+    ],
   },
   {
-    path: '/tables',
-    title: '餐桌管理',
-    description: '查看餐桌分区、容量和当前状态，支持快速维护。',
-    icon: <TableOutlined />,
+    title: '后厨出餐',
+    hint: '制作队列与出餐节奏',
+    entries: [
+      {
+        path: '/workbench',
+        title: '工作台',
+        description: '已付与制作中单据集中处理，出餐完成一键回写。',
+        icon: <DashboardOutlined />,
+        accent: 'violet',
+      },
+    ],
   },
   {
-    path: '/order-desk',
-    title: '点餐台',
-    description: '前台点单入口，支持菜品选择、规格组合和语音点餐。',
-    icon: <ShoppingCartOutlined />,
-  },
-  {
-    path: '/orders',
-    title: '订单管理',
-    description: '统一查询订单详情、跟进状态和处理异常订单。',
-    icon: <ShoppingOutlined />,
-  },
-  {
-    path: '/workbench',
-    title: '工作台',
-    description: '集中处理已支付和制作中的订单，提升出餐效率。',
-    icon: <DashboardOutlined />,
+    title: '门店配置',
+    hint: '菜单与桌台基础资料',
+    entries: [
+      {
+        path: '/menu',
+        title: '菜单管理',
+        description: '分类、菜品与规格维护，决定前台展示与价格。',
+        icon: <MenuOutlined />,
+        accent: 'emerald',
+      },
+      {
+        path: '/tables',
+        title: '餐桌管理',
+        description: '分区、桌位与占用状态，支撑点餐与排桌。',
+        icon: <TableOutlined />,
+        accent: 'slate',
+      },
+      {
+        path: '/table-map',
+        title: '餐桌平面图',
+        description: '自绘厅面布局，有订单的桌台实时高亮。',
+        icon: <LayoutOutlined />,
+        accent: 'blue',
+      },
+    ],
   },
 ]
 
@@ -148,7 +197,7 @@ export default function Home() {
         )
         setOrderHistory(points.map((item) => ({ ...item, value: historyMap.get(item.key) || 0 })))
       } catch {
-        message.error('首页概览加载失败')
+        message.error('概览数据加载失败，请稍后重试')
       } finally {
         setLoading(false)
       }
@@ -158,12 +207,41 @@ export default function Home() {
   }, [])
 
   const statCards = useMemo(
-    () => [
-      { title: '菜品总数', value: menuTotal, suffix: '份' },
-      { title: '餐桌总数', value: tableTotal, suffix: '桌' },
-      { title: '使用中餐桌', value: busyTableTotal, suffix: '桌' },
-      { title: '待处理订单', value: pendingOrderTotal, suffix: '单' },
-    ],
+    () =>
+      [
+        {
+          title: '在售菜品',
+          value: menuTotal,
+          suffix: '道',
+          hint: '含多规格条目',
+          icon: <MenuOutlined />,
+          accent: 'emerald' as const,
+        },
+        {
+          title: '桌位总数',
+          value: tableTotal,
+          suffix: '桌',
+          hint: '全店可编排桌位',
+          icon: <TableOutlined />,
+          accent: 'slate' as const,
+        },
+        {
+          title: '用餐中',
+          value: busyTableTotal,
+          suffix: '桌',
+          hint: '当前占用',
+          icon: <ThunderboltOutlined />,
+          accent: 'amber' as const,
+        },
+        {
+          title: '待跟进单',
+          value: pendingOrderTotal,
+          suffix: '单',
+          hint: '待支付 / 制作 / 出餐',
+          icon: <ShoppingOutlined />,
+          accent: 'blue' as const,
+        },
+      ] as const,
     [busyTableTotal, menuTotal, pendingOrderTotal, tableTotal]
   )
 
@@ -171,65 +249,100 @@ export default function Home() {
   const historyTotal = useMemo(() => orderHistory.reduce((sum, item) => sum + item.value, 0), [orderHistory])
 
   return (
-    <div>
+    <div className="home-page">
       <Card className="home-hero-card" loading={loading}>
         <div className="home-hero-grid">
-          <div>
+          <div className="home-hero-main">
+            <Typography.Text className="home-hero-kicker">今日概览</Typography.Text>
             <Typography.Title level={2} className="home-hero-title">
-              让点餐、出餐和桌台协同更顺畅
+              经营全景一览
             </Typography.Title>
-            <Typography.Text className="home-hero-subtitle">
-              首页聚合当前经营数据和常用入口，前厅可以快速点单，后厨可以及时处理订单，管理端也能更快完成菜单与桌台维护。
-            </Typography.Text>
-            <Space wrap size="middle">
+            <Typography.Paragraph className="home-hero-subtitle">
+              数据与入口同屏：点单、出餐、菜单与桌台，一站衔接。
+            </Typography.Paragraph>
+            <Space wrap size="middle" className="home-hero-actions">
               <Link to="/order-desk">
                 <Button className="app-accent-cta" type="primary" size="large" icon={<ShoppingCartOutlined />}>
-                  进入点餐台
+                  打开点餐台
                 </Button>
               </Link>
               <Link to="/workbench">
                 <Button size="large" icon={<DashboardOutlined />}>
-                  查看工作台
+                  进入工作台
                 </Button>
               </Link>
             </Space>
           </div>
-          <div className="home-highlight-panel">
-            <div className="home-highlight-item">
-              <Typography.Text type="secondary">当前累计订单</Typography.Text>
-              <Typography.Title level={3} style={{ margin: '6px 0 0' }}>
-                {orderTotal} 单
-              </Typography.Title>
+          <div className="home-hero-aside">
+            <div className="home-hero-metric home-hero-metric--primary">
+              <div className="home-hero-metric-icon" aria-hidden>
+                <ShoppingOutlined />
+              </div>
+              <div>
+                <Typography.Text type="secondary" className="home-hero-metric-label">
+                  累计订单（系统建档）
+                </Typography.Text>
+                <div className="home-hero-metric-value">{orderTotal}</div>
+                <Typography.Text type="secondary" className="home-hero-metric-foot">
+                  历史全量统计
+                </Typography.Text>
+              </div>
             </div>
-            <div className="home-highlight-item">
-              <Typography.Text type="secondary">建议优先处理</Typography.Text>
-              <Typography.Title level={4} style={{ margin: '6px 0 0' }}>
-                已支付但未完成的订单
-              </Typography.Title>
+            <div className="home-hero-metric home-hero-metric--accent">
+              <div className="home-hero-metric-icon home-hero-metric-icon--pulse" aria-hidden>
+                <ThunderboltOutlined />
+              </div>
+              <div>
+                <Typography.Text type="secondary" className="home-hero-metric-label">
+                  建议优先处理
+                </Typography.Text>
+                <Typography.Title level={5} className="home-hero-metric-title">
+                  {pendingOrderTotal} 单待跟进
+                </Typography.Title>
+                <Typography.Text type="secondary" className="home-hero-metric-foot">
+                  含待支付、制作中、已付待出餐
+                </Typography.Text>
+              </div>
             </div>
           </div>
         </div>
       </Card>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
+      <Row gutter={[16, 16]} className="home-stat-row">
         {statCards.map((item) => (
           <Col key={item.title} xs={24} sm={12} lg={6}>
-            <Card className="home-stat-card" loading={loading}>
-              <Statistic title={item.title} value={item.value} suffix={item.suffix} />
+            <Card className={`home-stat-card home-stat-card--${item.accent}`} loading={loading}>
+              <div className="home-stat-inner">
+                <span className={`home-stat-icon home-stat-icon--${item.accent}`}>{item.icon}</span>
+                <div className="home-stat-body">
+                  <Statistic title={item.title} value={item.value} suffix={item.suffix} />
+                  <Typography.Text type="secondary" className="home-stat-hint">
+                    {item.hint}
+                  </Typography.Text>
+                </div>
+              </div>
             </Card>
           </Col>
         ))}
       </Row>
 
-      <Card className="home-history-card" loading={loading} style={{ marginTop: 20 }}>
+      <Card className="home-history-card" loading={loading}>
         <div className="home-history-head">
           <div>
-            <Typography.Title level={5} className="home-history-title">
-              近14天订单历史
-            </Typography.Title>
-            <Typography.Text className="home-history-subtitle">按天统计订单量，方便查看近期波动趋势</Typography.Text>
+            <div className="home-history-headline">
+              <Typography.Title level={5} className="home-history-title">
+                近 14 天订单节奏
+              </Typography.Title>
+              <span className="home-history-badge">按日</span>
+            </div>
+            <Typography.Paragraph className="home-history-subtitle">
+              自然日汇总订单量，快速感知客流起伏；柱高表示当日新建单数量。
+            </Typography.Paragraph>
           </div>
-          <Typography.Text className="home-history-total">近14天总计 {historyTotal} 单</Typography.Text>
+          <div className="home-history-summary">
+            <span className="home-history-summary-label">区间合计</span>
+            <span className="home-history-total">{historyTotal} 单</span>
+          </div>
         </div>
 
         <div className="home-history-chart-wrap">
@@ -247,48 +360,64 @@ export default function Home() {
         </div>
       </Card>
 
-      <div className="page-toolbar" style={{ marginTop: 24 }}>
-        <div>
+      <section className="home-entries-section">
+        <div className="home-entries-intro">
           <Typography.Title level={4} className="page-section-title">
-            常用入口
+            按场景进入功能
           </Typography.Title>
-          <Typography.Text className="page-section-subtitle">
-            建议把高频操作固定在首页，减少前厅和管理人员的切换成本。
+          <Typography.Paragraph className="page-section-subtitle home-entries-lead">
+            高频路径按前厅、后厨与配置分组，减少在侧边栏里来回找入口的时间。
+          </Typography.Paragraph>
+        </div>
+
+        {entryGroups.map((group) => (
+          <div key={group.title} className="home-entry-group">
+            <div className="home-entry-group-head">
+              <Typography.Title level={5} className="home-entry-group-title">
+                {group.title}
+              </Typography.Title>
+              <Typography.Text type="secondary" className="home-entry-group-hint">
+                {group.hint}
+              </Typography.Text>
+            </div>
+            <Row gutter={[16, 16]}>
+              {group.entries.map((item) => (
+                <Col key={item.path} xs={24} sm={12} xl={8}>
+                  <Link to={item.path}>
+                    <Card hoverable className={`home-entry-card home-entry-card--${item.accent}`}>
+                      <div className="home-entry-top">
+                        <span className={`home-entry-icon home-entry-icon--${item.accent}`}>{item.icon}</span>
+                        <ArrowRightOutlined className="home-entry-arrow" />
+                      </div>
+                      <Typography.Title level={5} className="home-entry-title">
+                        {item.title}
+                      </Typography.Title>
+                      <Typography.Paragraph type="secondary" className="home-entry-desc">
+                        {item.description}
+                      </Typography.Paragraph>
+                      <span className="home-entry-cta">
+                        进入模块 <ArrowRightOutlined />
+                      </span>
+                    </Card>
+                  </Link>
+                </Col>
+              ))}
+            </Row>
+          </div>
+        ))}
+      </section>
+
+      <div className="home-insight-panel">
+        <BulbOutlined className="home-insight-icon" />
+        <div>
+          <Typography.Text strong className="home-insight-title">
+            使用小贴士
           </Typography.Text>
+          <Typography.Paragraph className="home-insight-desc">
+            高峰时段可让前厅固定使用「点餐台」与「订单管理」，后厨盯住「工作台」出餐完成；闲时再到「菜单管理」「餐桌管理」做资料维护，分工更清晰。
+          </Typography.Paragraph>
         </div>
       </div>
-
-      <Row gutter={[16, 16]}>
-        {links.map((item) => (
-          <Col key={item.path} xs={24} sm={12} xl={8}>
-            <Link to={item.path}>
-              <Card hoverable className="home-entry-card">
-                <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                  <span className="home-entry-icon">{item.icon}</span>
-                  <div>
-                    <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-                      {item.title}
-                    </Typography.Title>
-                    <Typography.Text type="secondary">{item.description}</Typography.Text>
-                  </div>
-                  <Button type="link" style={{ padding: 0 }} icon={<ArrowRightOutlined />}>
-                    立即进入
-                  </Button>
-                </Space>
-              </Card>
-            </Link>
-          </Col>
-        ))}
-      </Row>
-
-      <Alert
-        style={{ marginTop: 24, borderRadius: 16 }}
-        type="info"
-        showIcon
-        icon={<FireOutlined />}
-        message="优化建议"
-        description="前厅高频使用“点餐台”和“工作台”，管理人员高频使用“菜单管理”和“餐桌管理”。首页已经按这个思路重组为概览加快捷入口。"
-      />
     </div>
   )
 }

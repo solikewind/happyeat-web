@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 更新规格组 PUT /central/v1/spec/group/${param0} */
 export async function specUpdateSpecGroup(

@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 获取角色权限矩阵 GET /central/v1/rbac/role-permissions */
 export async function rbacListRolePermission(options?: { [key: string]: any }) {

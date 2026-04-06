@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 列出订单 GET /central/v1/orders */
 export async function orderListOrder(
@@ -13,14 +13,14 @@ export async function orderListOrder(
     pageSize?: number;
     status?: string;
     /** 按餐桌筛选 */
-    table_id?: number;
+    table_id?: string;
   },
   options?: { [key: string]: any }
 ) {
   return request<{
     orders?: {
       created_at: string;
-      id: number;
+      id: string;
       items?: {
         amount: number;
         menu_name: string;
@@ -34,7 +34,7 @@ export async function orderListOrder(
       status: string;
       table_category?: string;
       table_code?: string;
-      table_id?: number;
+      table_id?: string;
       total_amount: number;
       updated_at: string;
     }[];

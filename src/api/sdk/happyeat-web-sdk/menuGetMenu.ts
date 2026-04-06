@@ -1,6 +1,6 @@
 // @ts-ignore
 /* eslint-disable */
-import request from "./src/api/request";
+import request from "../../request";
 
 /** 获取单个菜单 GET /central/v1/menu/${param0} */
 export async function menuGetMenu(
@@ -11,18 +11,18 @@ export async function menuGetMenu(
   const { id: param0, ...queryParams } = params;
   return request<{
     menu?: {
-      category_id?: number;
+      category_id?: string;
       created_at?: string;
       description?: string;
-      id?: number;
+      id?: string;
       image?: string;
       name?: string;
       price?: number;
       specs?: {
-        category_spec_id?: number;
+        category_spec_id?: string;
         price_delta: number;
         sort: number;
-        spec_item_id?: number;
+        spec_item_id?: string;
       }[];
       updated_at?: string;
     };

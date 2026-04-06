@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useState } from 'react'
-import { getToken, setToken as saveToken, clearToken } from '../api/client'
+import { getToken, setToken as saveToken, clearToken, isJwtExpired } from '../api/client'
 import { hasPermission, type PermissionKey } from '../auth/permissions'
 
 interface AuthContextValue {
@@ -28,10 +28,20 @@ function parseTokenRole(token: string | null): string | null {
   }
 }
 
+function readInitialSession(): { token: string | null; role: string | null } {
+  const t = getToken()
+  if (!t) return { token: null, role: null }
+  if (isJwtExpired(t)) {
+    clearToken()
+    return { token: null, role: null }
+  }
+  return { token: t, role: parseTokenRole(t) }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const initialToken = getToken()
-  const [token, setTokenState] = useState<string | null>(initialToken)
-  const [role, setRole] = useState<string | null>(parseTokenRole(initialToken))
+  const initial = readInitialSession()
+  const [token, setTokenState] = useState<string | null>(initial.token)
+  const [role, setRole] = useState<string | null>(initial.role)
 
   const setToken = useCallback((t: string) => {
     saveToken(t)
