@@ -15,16 +15,22 @@ export interface MenuCategory {
   id: string
   name: string
   description?: string
-  create_at?: number
+  sort?: number
+  created_at?: string
+  updated_at?: string
 }
 
 /** 兼容旧名 */
 export type Category = MenuCategory
 
 export interface MenuSpec {
-  spec_type: string
-  spec_value: string
+  spec_item_id?: string
+  category_spec_id?: string
+  source?: 'category' | 'library' | 'custom'
+  spec_type?: string
+  spec_value?: string
   price_delta: number
+  sort?: number
 }
 
 export interface Menu {
@@ -35,8 +41,37 @@ export interface Menu {
   description?: string
   image?: string
   specs?: MenuSpec[]
-  create_at: number
-  update_at: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CategorySpec {
+  id: string
+  category_id: string
+  spec_item_id?: string
+  spec_type: string
+  spec_value: string
+  price_delta: number
+  sort: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface SpecGroup {
+  id: string
+  name: string
+  sort: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface SpecItem {
+  id: string
+  spec_group_id: string
+  name: string
+  default_price: number
+  created_at?: string
+  updated_at?: string
 }
 
 /** 餐桌分类 */

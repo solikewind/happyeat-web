@@ -14,7 +14,8 @@ import { useAuth } from '../contexts/AuthContext'
 function defaultSpecs(specs: MenuSpec[]): MenuSpec[] {
   const byType = new Map<string, MenuSpec>()
   for (const s of specs) {
-    if (!byType.has(s.spec_type)) byType.set(s.spec_type, s)
+    const specType = s.spec_type ?? '默认规格'
+    if (!byType.has(specType)) byType.set(specType, s)
   }
   return Array.from(byType.values())
 }
@@ -355,8 +356,9 @@ export default function OrderDesk() {
               const unitPrice = menu.price + selectedSpecs.reduce((sum, s) => sum + (s.price_delta ?? 0), 0)
               const specsByType = new Map<string, MenuSpec[]>()
               for (const s of menu.specs ?? []) {
-                if (!specsByType.has(s.spec_type)) specsByType.set(s.spec_type, [])
-                specsByType.get(s.spec_type)!.push(s)
+                const specType = s.spec_type ?? '默认规格'
+                if (!specsByType.has(specType)) specsByType.set(specType, [])
+                specsByType.get(specType)!.push(s)
               }
 
               return (
@@ -448,8 +450,8 @@ export default function OrderDesk() {
                               optionType="button"
                               size="small"
                               options={opts.map((o) => ({
-                                label: `${o.spec_value}${o.price_delta ? ` +¥${o.price_delta}` : ''}`,
-                                value: o.spec_value,
+                                label: `${o.spec_value ?? '默认'}${o.price_delta ? ` +¥${o.price_delta}` : ''}`,
+                                value: o.spec_value ?? '默认',
                               }))}
                             />
                           </div>
