@@ -14,7 +14,7 @@ export async function iamListIamRoles(
   options?: { [key: string]: any }
 ) {
   return request<{
-    roles?: { role_code: string; role_name: string }[];
+    roles?: { id: string; role_code: string; role_name: string }[];
     total?: number;
   }>("/central/v1/iam/roles", {
     method: "GET",

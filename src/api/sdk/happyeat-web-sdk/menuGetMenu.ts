@@ -21,8 +21,11 @@ export async function menuGetMenu(
       specs?: {
         category_spec_id?: string;
         price_delta: number;
-        sort: number;
+        sort?: number;
+        source?: string;
         spec_item_id?: string;
+        spec_type?: string;
+        spec_value?: string;
       }[];
       updated_at?: string;
     };

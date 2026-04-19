@@ -32,7 +32,15 @@ export async function deleteTableCategory(id: string) {
   await api.delete(`/central/v1/table/category/${id}`)
 }
 
-export async function listTables(params?: { current?: number; pageSize?: number; code?: string; status?: string; category?: string }) {
+export async function listTables(params?: {
+  current?: number
+  pageSize?: number
+  code?: string
+  /** 桌号模糊搜索，与后端 ListTableReq.name 一致 */
+  name?: string
+  status?: string
+  category?: string
+}) {
   const { data } = await api.get<{ tables: Table[]; total: number }>('/central/v1/tables', { params })
   return data
 }

@@ -9,7 +9,7 @@ export async function specUpdateSpecItem(
   body: {
     default_price?: number;
     name: string;
-    /** 十进制整数字符串（uint64，避免 JS Number 精度丢失） */
+    sort?: number;
     spec_group_id: string;
   },
   options?: { [key: string]: any }

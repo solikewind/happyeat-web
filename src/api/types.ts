@@ -105,6 +105,7 @@ export interface Order {
   id: string
   order_no: string
   order_type: string
+  /** 经 `api/order` 列表/详情/创建返回后为小写（created / paid / …），与展示用键一致 */
   status: string
   total_amount: number
   table_id?: string
@@ -112,6 +113,7 @@ export interface Order {
   table_category?: string // 餐桌类别（如大厅、包间）
   remark?: string
   items?: OrderItem[]
-  create_at: number
-  update_at: number
+  /** 后端 RFC3339 UTC 字符串 */
+  created_at?: string
+  updated_at?: string
 }

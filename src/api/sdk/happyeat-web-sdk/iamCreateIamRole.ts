@@ -2,17 +2,15 @@
 /* eslint-disable */
 import request from "../../request";
 
-/** 创建规格项 POST /central/v1/spec/item */
-export async function specCreateSpecItem(
+/** 创建角色（无权限点，需再通过 RBAC 矩阵配置） POST /central/v1/iam/roles */
+export async function iamCreateIamRole(
   body: {
-    default_price?: number;
-    name: string;
-    sort?: number;
-    spec_group_id: string;
+    role_code: string;
+    role_name?: string;
   },
   options?: { [key: string]: any }
 ) {
-  return request<Record<string, any>>("/central/v1/spec/item", {
+  return request<{ id?: string }>("/central/v1/iam/roles", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

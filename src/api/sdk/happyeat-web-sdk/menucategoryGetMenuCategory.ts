@@ -15,6 +15,7 @@ export async function menucategoryGetMenuCategory(
       description?: string;
       id?: string;
       name?: string;
+      sort?: number;
       updated_at?: string;
     };
   }>(`/central/v1/menu/category/${param0}`, {

@@ -16,7 +16,12 @@ export async function iamListIamUsers(
 ) {
   return request<{
     total?: number;
-    users?: { display_name: string; roles: string[]; user_code: string }[];
+    users?: {
+      display_name: string;
+      id: string;
+      roles: string[];
+      user_code: string;
+    }[];
   }>("/central/v1/iam/users", {
     method: "GET",
     headers: {

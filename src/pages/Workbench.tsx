@@ -1,22 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Button, Card, Empty, Pagination, Select, Space, Tag, Typography, message } from 'antd'
+import { Button, Card, Empty, Pagination, Select, Space, Spin, Tag, Typography, message } from 'antd'
 import { CheckOutlined, ClockCircleOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import type { Order } from '../api/types'
 import { listWorkbenchOrders, updateOrderStatus } from '../api/order'
 import { useAuth } from '../contexts/AuthContext'
-
-const ORDER_TYPE_MAP: Record<string, string> = {
-  dine_in: '堂食',
-  takeaway: '打包外带',
-}
-
-const STATUS_MAP: Record<string, string> = {
-  created: '待支付',
-  paid: '已支付',
-  preparing: '制作中',
-  completed: '已完成',
-  cancelled: '已取消',
-}
+import { normOrderStatus, ORDER_STATUS_LABEL, ORDER_TYPE_LABEL } from '../utils/orderStatus'
 
 const asText = (value: unknown, fallback = '-') => {
   if (typeof value === 'string') return value
@@ -41,7 +29,11 @@ export default function Workbench() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await listWorkbenchOrders({ current: page, pageSize: WORKBENCH_PAGE_SIZE, status: statusFilter })
+      const res = await listWorkbenchOrders({
+        current: page,
+        pageSize: WORKBENCH_PAGE_SIZE,
+        status: statusFilter,
+      })
       setOrders(Array.isArray(res?.orders) ? res.orders : [])
       setTotal(Number(res?.total) || 0)
     } catch {
@@ -81,7 +73,10 @@ export default function Workbench() {
     })
   }
 
-  const preparingCount = useMemo(() => orders.filter((item) => item.status === 'preparing').length, [orders])
+  const preparingCount = useMemo(
+    () => orders.filter((item) => normOrderStatus(item.status) === 'preparing').length,
+    [orders],
+  )
   const pageAmount = useMemo(() => orders.reduce((sum, item) => sum + asNumber(item.total_amount), 0), [orders])
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / WORKBENCH_PAGE_SIZE)), [total])
   const canPrev = page > 1
@@ -89,49 +84,51 @@ export default function Workbench() {
 
   return (
     <div className="manage-shell workbench-shell">
-      <Card className="order-desk-filter-card">
-        <div className="manage-filter-bar">
-          <div className="manage-filter-group">
-            <Select
-              allowClear
-              style={{ minWidth: 180 }}
-              placeholder="按状态筛选"
-              value={statusFilter}
-              onChange={(value) => {
-                setStatusFilter(value)
-                setPage(1)
-              }}
-              options={Object.entries(STATUS_MAP).map(([value, label]) => ({ value, label }))}
-            />
-            <Button
-              type={statusFilter === 'completed' ? 'primary' : 'default'}
-              onClick={() => {
-                setStatusFilter((prev) => (prev === 'completed' ? undefined : 'completed'))
-                setPage(1)
-              }}
-            >
-              已完成
-            </Button>
+      <Card className="manage-table-card workbench-data-card">
+        <div className="workbench-toolbar">
+          <div className="manage-filter-bar workbench-filter">
+            <div className="manage-filter-group">
+              <Select
+                allowClear
+                style={{ minWidth: 180 }}
+                placeholder="按状态筛选"
+                value={statusFilter}
+                onChange={(value) => {
+                  setStatusFilter(value)
+                  setPage(1)
+                }}
+                options={Object.entries(ORDER_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
+              />
+              <Button
+                type={statusFilter === 'completed' ? 'primary' : 'default'}
+                onClick={() => {
+                  setStatusFilter((prev) => (prev === 'completed' ? undefined : 'completed'))
+                  setPage(1)
+                }}
+              >
+                已完成
+              </Button>
+            </div>
+            <Tag color="orange">优先处理 已支付 / 制作中</Tag>
           </div>
-          <Tag color="orange">
-            优先处理 已支付 / 制作中
-          </Tag>
+          <div className="compact-summary-inline compact-summary-inline--dense">
+            <Tag color="blue">待处理总数 {total}</Tag>
+            <Tag color="purple">本页制作中 {preparingCount}</Tag>
+            <Tag color="gold">本页金额 ¥{pageAmount.toFixed(2)}</Tag>
+          </div>
         </div>
-      </Card>
 
-      <div className="compact-summary-inline">
-        <Tag color="blue">待处理总数 {total}</Tag>
-        <Tag color="purple">本页制作中 {preparingCount}</Tag>
-        <Tag color="gold">本页金额 ¥{pageAmount.toFixed(2)}</Tag>
-      </div>
-
-      <div className="workbench-card-grid">
-        {orders.length === 0 && !loading ? (
-          <Card className="workbench-table-card">
-            <Empty description="暂无待处理订单" />
-          </Card>
-        ) : (
-          orders.map((order) => {
+        <div className="workbench-card-grid">
+          {loading && orders.length === 0 ? (
+            <div className="workbench-grid-empty">
+              <Spin />
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="workbench-grid-empty">
+              <Empty description="暂无待处理订单" />
+            </div>
+          ) : (
+            orders.map((order) => {
             const locationText = order.table_code
               ? `${order.table_category ? `${asText(order.table_category, '')}-` : ''}${asText(order.table_code)}`
               : '外带订单'
@@ -165,16 +162,16 @@ export default function Workbench() {
                     <div className="workbench-meta-chip">
                       <ClockCircleOutlined />
                       <span>
-                        {asNumber(order.create_at)
-                          ? new Date(asNumber(order.create_at) * 1000).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                        {order.created_at
+                          ? new Date(order.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
                           : '--:--'}
                       </span>
                     </div>
                     <span className={`workbench-status-pill ${order.order_type === 'dine_in' ? 'is-dine-in' : 'is-takeaway'}`}>
-                      {ORDER_TYPE_MAP[asText(order.order_type, '')] ?? asText(order.order_type)}
+                      {ORDER_TYPE_LABEL[asText(order.order_type, '')] ?? asText(order.order_type)}
                     </span>
-                    <span className={`workbench-status-pill workbench-status-pill-state is-${asText(order.status, 'unknown')}`}>
-                      {STATUS_MAP[asText(order.status, '')] ?? asText(order.status)}
+                    <span className={`workbench-status-pill workbench-status-pill-state is-${normOrderStatus(order.status) || 'unknown'}`}>
+                      {ORDER_STATUS_LABEL[normOrderStatus(order.status)] ?? asText(order.status)}
                     </span>
                   </div>
 
@@ -213,38 +210,43 @@ export default function Workbench() {
 
                   <div className="workbench-order-footer">
                     <Typography.Text type="secondary">备注：{asText(order.remark, '无')}</Typography.Text>
-                    {order.status !== 'completed' && order.status !== 'cancelled' ? (
+                    {normOrderStatus(order.status) === 'completed' ? (
+                      <Tag color="success">已完成</Tag>
+                    ) : normOrderStatus(order.status) === 'cancelled' ? (
+                      <Tag>已取消</Tag>
+                    ) : normOrderStatus(order.status) === 'created' ? (
+                      <Tag color="warning">待支付 · 收款后再出餐</Tag>
+                    ) : (
                       <Button type="primary" icon={<CheckOutlined />} onClick={() => handleComplete(order.id)} disabled={!canComplete}>
                         出单完成
                       </Button>
-                    ) : (
-                      <Tag color="success">已完成</Tag>
                     )}
                   </div>
                 </Space>
               </Card>
             )
           })
-        )}
-      </div>
+          )}
+        </div>
 
-      <Card className="manage-panel-card">
-        <Space style={{ width: '100%', justifyContent: 'space-between' }} align="center">
-          <Button icon={<LeftOutlined />} disabled={!canPrev} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
-            上一页
-          </Button>
-          <Pagination
-            current={page}
-            pageSize={WORKBENCH_PAGE_SIZE}
-            total={total}
-            showSizeChanger={false}
-            showTotal={(count) => `共 ${count} 条`}
-            onChange={setPage}
-          />
-          <Button icon={<RightOutlined />} disabled={!canNext} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>
-            下一页
-          </Button>
-        </Space>
+        <div className="workbench-pager-bar">
+          <Space style={{ width: '100%', justifyContent: 'space-between' }} align="center">
+            <Button icon={<LeftOutlined />} disabled={!canPrev} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
+              上一页
+            </Button>
+            <Pagination
+              current={page}
+              pageSize={WORKBENCH_PAGE_SIZE}
+              total={total}
+              showSizeChanger={false}
+              showTotal={(count) => `共 ${count} 条`}
+              onChange={setPage}
+            />
+            <Button icon={<RightOutlined />} disabled={!canNext} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>
+              下一页
+            </Button>
+          </Space>
+        </div>
       </Card>
     </div>
   )

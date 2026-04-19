@@ -7,6 +7,7 @@ export async function menucategoryCreateMenuCategory(
   body: {
     description?: string;
     name: string;
+    sort?: number;
   },
   options?: { [key: string]: any }
 ) {

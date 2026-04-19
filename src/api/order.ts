@@ -1,5 +1,6 @@
 import { api } from './client'
 import type { Order } from './types'
+import { normOrderStatus, toApiOrderStatus } from '../utils/orderStatus'
 
 export interface CreateOrderItem {
   menu_name: string
@@ -8,10 +9,20 @@ export interface CreateOrderItem {
   spec_info?: string
 }
 
+/** 统一为前端使用的小写状态，避免各处再做大写兼容 */
+function normalizeOrder(order: Order): Order {
+  const s = normOrderStatus(order.status)
+  return { ...order, status: s || order.status }
+}
+
 const normalizeOrderList = (data: { orders?: Order[]; total?: number } | undefined) => ({
-  orders: Array.isArray(data?.orders) ? data.orders : [],
+  orders: (Array.isArray(data?.orders) ? data.orders : []).map(normalizeOrder),
   total: Number(data?.total) || 0,
 })
+
+function withApiStatus<T extends { status?: string }>(params: T): T {
+  return { ...params, status: toApiOrderStatus(params.status) as string | undefined }
+}
 
 export async function listOrders(params?: {
   current?: number
@@ -20,13 +31,14 @@ export async function listOrders(params?: {
   order_type?: string
   table_id?: string
 }) {
-  const { data } = await api.get<{ orders: Order[]; total: number }>('/central/v1/orders', { params })
+  const query = params ? withApiStatus(params) : undefined
+  const { data } = await api.get<{ orders: Order[]; total: number }>('/central/v1/orders', { params: query })
   return normalizeOrderList(data)
 }
 
 export async function getOrder(id: string) {
   const { data } = await api.get<{ order: Order }>(`/central/v1/order/${id}`)
-  return data
+  return { ...data, order: data.order ? normalizeOrder(data.order) : data.order }
 }
 
 export async function createOrder(body: {
@@ -37,14 +49,17 @@ export async function createOrder(body: {
   remark?: string
 }) {
   const { data } = await api.post<{ order: Order }>('/central/v1/orders', body)
-  return data
+  return { ...data, order: data.order ? normalizeOrder(data.order) : data.order }
 }
 
+/** 入参可为小写（与界面一致），请求体统一为大写以匹配后端 enum */
 export async function updateOrderStatus(id: string, status: string) {
-  await api.put(`/central/v1/order/${id}/status`, { status })
+  const next = toApiOrderStatus(status) ?? status
+  await api.put(`/central/v1/order/${id}/status`, { status: next })
 }
 
 export async function listWorkbenchOrders(params?: { current?: number; pageSize?: number; status?: string }) {
-  const { data } = await api.get<{ orders: Order[]; total: number }>('/central/v1/workbench/orders', { params })
+  const query = params ? withApiStatus(params) : undefined
+  const { data } = await api.get<{ orders: Order[]; total: number }>('/central/v1/workbench/orders', { params: query })
   return normalizeOrderList(data)
 }

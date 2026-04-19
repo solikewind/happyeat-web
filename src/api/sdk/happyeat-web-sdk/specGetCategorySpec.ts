@@ -16,6 +16,7 @@ export async function specGetCategorySpec(
       id?: string;
       price_delta?: number;
       sort?: number;
+      spec_item_id?: string;
       spec_type?: string;
       spec_value?: string;
       updated_at?: string;

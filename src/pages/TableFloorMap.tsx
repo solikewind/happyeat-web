@@ -29,16 +29,7 @@ import {
   saveFloorLayout,
   type FloorPosition,
 } from '../utils/tableFloorLayout'
-
-const ACTIVE_ORDER = new Set(['created', 'paid', 'preparing'])
-
-const ORDER_STATUS_LABEL: Record<string, string> = {
-  created: '待支付',
-  paid: '已支付',
-  preparing: '制作中',
-  completed: '已完成',
-  cancelled: '已取消',
-}
+import { isActiveOrderStatus, normOrderStatus, orderStatusLabel } from '../utils/orderStatus'
 
 function tableStatusLabel(status: string) {
   if (status === 'using') return '使用中'
@@ -47,15 +38,15 @@ function tableStatusLabel(status: string) {
 }
 
 function ordersForTable(orders: Order[], tableId: string) {
-  return orders.filter((o) => o.table_id === tableId && ACTIVE_ORDER.has(o.status))
+  return orders.filter((o) => o.table_id === tableId && isActiveOrderStatus(o.status))
 }
 
 function strongestOrderStatus(orders: Order[]): string | null {
   if (!orders.length) return null
-  if (orders.some((o) => o.status === 'preparing')) return 'preparing'
-  if (orders.some((o) => o.status === 'paid')) return 'paid'
-  if (orders.some((o) => o.status === 'created')) return 'created'
-  return orders[0]?.status ?? null
+  if (orders.some((o) => normOrderStatus(o.status) === 'preparing')) return 'preparing'
+  if (orders.some((o) => normOrderStatus(o.status) === 'paid')) return 'paid'
+  if (orders.some((o) => normOrderStatus(o.status) === 'created')) return 'created'
+  return normOrderStatus(orders[0]?.status) || null
 }
 
 export default function TableFloorMap() {
@@ -83,7 +74,7 @@ export default function TableFloorMap() {
       const list = Array.isArray(tableRes?.tables) ? tableRes.tables : []
       const ords = Array.isArray(orderRes?.orders) ? orderRes.orders : []
       setTables(list)
-      setOrders(ords.filter((o) => o.table_id != null && ACTIVE_ORDER.has(o.status)))
+      setOrders(ords.filter((o) => o.table_id != null && isActiveOrderStatus(o.status)))
     } catch {
       message.error('加载餐桌或订单失败')
     } finally {
@@ -319,7 +310,7 @@ export default function TableFloorMap() {
                       <Space>
                         <ShoppingOutlined />
                         <span>{o.order_no}</span>
-                        <Tag>{ORDER_STATUS_LABEL[o.status] ?? o.status}</Tag>
+                        <Tag>{orderStatusLabel(o.status)}</Tag>
                         <Typography.Text type="secondary">¥{Number(o.total_amount ?? 0).toFixed(2)}</Typography.Text>
                       </Space>
                     </Link>

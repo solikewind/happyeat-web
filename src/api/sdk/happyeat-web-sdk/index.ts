@@ -4,10 +4,19 @@
 // API 唯一标识：
 import * as authLogin from "./authLogin";
 import * as iamListIamPermissions from "./iamListIamPermissions";
+import * as iamGetIamPermission from "./iamGetIamPermission";
 import * as iamListIamRoles from "./iamListIamRoles";
+import * as iamCreateIamRole from "./iamCreateIamRole";
+import * as iamGetIamRole from "./iamGetIamRole";
+import * as iamUpdateIamRole from "./iamUpdateIamRole";
+import * as iamDeleteIamRole from "./iamDeleteIamRole";
 import * as iamAssignIamUserRole from "./iamAssignIamUserRole";
 import * as iamRemoveIamUserRole from "./iamRemoveIamUserRole";
 import * as iamListIamUsers from "./iamListIamUsers";
+import * as iamCreateIamUser from "./iamCreateIamUser";
+import * as iamGetIamUser from "./iamGetIamUser";
+import * as iamUpdateIamUser from "./iamUpdateIamUser";
+import * as iamDeleteIamUser from "./iamDeleteIamUser";
 import * as menucategoryListMenuCategory from "./menucategoryListMenuCategory";
 import * as menucategoryCreateMenuCategory from "./menucategoryCreateMenuCategory";
 import * as menucategoryGetMenuCategory from "./menucategoryGetMenuCategory";
@@ -25,6 +34,7 @@ import * as orderCreateOrder from "./orderCreateOrder";
 import * as rbacSyncCasbinPolicies from "./rbacSyncCasbinPolicies";
 import * as rbacListRolePermission from "./rbacListRolePermission";
 import * as rbacResetRolePermissions from "./rbacResetRolePermissions";
+import * as rbacGetRolePermission from "./rbacGetRolePermission";
 import * as rbacUpdateRolePermissions from "./rbacUpdateRolePermissions";
 import * as specListCategorySpec from "./specListCategorySpec";
 import * as specCreateCategorySpec from "./specCreateCategorySpec";
@@ -55,10 +65,19 @@ import * as workbenchListWorkbenchOrder from "./workbenchListWorkbenchOrder";
 export default {
   authLogin,
   iamListIamPermissions,
+  iamGetIamPermission,
   iamListIamRoles,
+  iamCreateIamRole,
+  iamGetIamRole,
+  iamUpdateIamRole,
+  iamDeleteIamRole,
   iamAssignIamUserRole,
   iamRemoveIamUserRole,
   iamListIamUsers,
+  iamCreateIamUser,
+  iamGetIamUser,
+  iamUpdateIamUser,
+  iamDeleteIamUser,
   menucategoryListMenuCategory,
   menucategoryCreateMenuCategory,
   menucategoryGetMenuCategory,
@@ -76,6 +95,7 @@ export default {
   rbacSyncCasbinPolicies,
   rbacListRolePermission,
   rbacResetRolePermissions,
+  rbacGetRolePermission,
   rbacUpdateRolePermissions,
   specListCategorySpec,
   specCreateCategorySpec,

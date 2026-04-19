@@ -17,6 +17,7 @@ import {
   Table,
   Tabs,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from 'antd'
@@ -31,9 +32,10 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { DeleteOutlined, EditOutlined, HolderOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, FundProjectionScreenOutlined, HolderOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import type { CategorySpec, Menu, MenuCategory, MenuSpec, SpecGroup, SpecItem } from '../api/types'
 import { useAuth } from '../contexts/AuthContext'
+import { appPath } from '../utils/appPath'
 import {
   createMenu,
   createMenuCategory,
@@ -100,6 +102,15 @@ type CategorySpecImportPreview = {
   spec_item_id: string
   spec_value: string
   price_delta: number
+}
+
+function renderManageModalTitle(title: string, description: string) {
+  return (
+    <div className="manage-modal-header-block">
+      <span className="manage-modal-header-title">{title}</span>
+      <span className="manage-modal-header-description">{description}</span>
+    </div>
+  )
 }
 
 function CategorySpecTab({ preferredCategoryId }: { preferredCategoryId?: string }) {
@@ -423,6 +434,7 @@ function CategorySpecTab({ preferredCategoryId }: { preferredCategoryId?: string
         withSort.map((c) =>
           updateMenuCategory(c.id, {
             name: c.name,
+            description: c.description ?? '',
             sort: c.sort ?? 0,
           }),
         ),
@@ -604,7 +616,10 @@ function CategorySpecTab({ preferredCategoryId }: { preferredCategoryId?: string
 
       <Modal
         className="manage-modal"
-        title={editingId == null ? '新建分类规格' : '编辑分类规格'}
+        title={renderManageModalTitle(
+          editingId == null ? '新建分类规格' : '编辑分类规格',
+          '把可复用规格绑定到菜单分类，方便菜品批量继承。'
+        )}
         open={modalOpen}
         onOk={onModalOk}
         onCancel={() => setModalOpen(false)}
@@ -726,7 +741,7 @@ function CategorySpecTab({ preferredCategoryId }: { preferredCategoryId?: string
 
       <Modal
         className="manage-modal"
-        title="从基础规格库导入"
+        title={renderManageModalTitle('从基础规格库导入', '选择基础规格组后，一次性导入到目标分类。')}
         open={importModalOpen}
         onOk={onImportOk}
         onCancel={() => setImportModalOpen(false)}
@@ -1175,7 +1190,10 @@ function SpecGroupTab() {
 
       <Modal
         className="manage-modal"
-        title={editingId == null ? '新建规格组' : '编辑规格组'}
+        title={renderManageModalTitle(
+          editingId == null ? '新建规格组' : '编辑规格组',
+          '沉淀通用规格维度，后续可被分类规格和菜品快速引用。'
+        )}
         open={modalOpen}
         onOk={onModalOk}
         onCancel={() => setModalOpen(false)}
@@ -1795,6 +1813,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
         withSort.map((c) =>
           updateMenuCategory(c.id, {
             name: c.name,
+            description: c.description ?? '',
             sort: c.sort ?? 0,
           }),
         ),
@@ -1806,7 +1825,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
   }
 
   return (
-    <div className="manage-shell">
+    <>
       <div className="menu-workspace-layout">
         <Card className="manage-panel-card menu-workspace-side">
           <div className="menu-workspace-side-header">
@@ -1857,49 +1876,61 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
         </Card>
 
         <div className="menu-workspace-main">
-          <Card className="manage-panel-card">
-            <div className="manage-filter-bar">
-              <div className="manage-filter-group">
-                <Input.Search
-                  placeholder="搜索菜品名称"
-                  allowClear
-                  enterButton={<SearchOutlined />}
-                  style={{ width: 260 }}
-                  onSearch={handleSearch}
-                  onChange={(event) => {
-                    if (!event.target.value) {
-                      setNameSearch(undefined)
-                      setPage(1)
-                    }
-                  }}
-                />
-                {categoryFilter ? (
-                  <Tag
-                    color="blue"
-                    closable
-                    onClose={(e) => {
-                      e.preventDefault()
-                      setCategoryFilter(undefined)
-                      setPage(1)
+          <Card className="manage-table-card menu-workspace-menu-data-card">
+            <div className="menu-workspace-menu-toolbar">
+              <div className="manage-filter-bar menu-workspace-menu-filter">
+                <div className="manage-filter-group">
+                  <Input.Search
+                    placeholder="搜索菜品名称"
+                    allowClear
+                    enterButton={<SearchOutlined />}
+                    style={{ width: 260 }}
+                    onSearch={handleSearch}
+                    onChange={(event) => {
+                      if (!event.target.value) {
+                        setNameSearch(undefined)
+                        setPage(1)
+                      }
                     }}
-                    style={{ padding: '4px 10px', fontSize: 13 }}
-                  >
-                    分类：{categoryFilter}
-                  </Tag>
-                ) : null}
+                  />
+                  {categoryFilter ? (
+                    <Tag
+                      color="blue"
+                      closable
+                      onClose={(e) => {
+                        e.preventDefault()
+                        setCategoryFilter(undefined)
+                        setPage(1)
+                      }}
+                      style={{ padding: '4px 10px', fontSize: 13 }}
+                    >
+                      分类：{categoryFilter}
+                    </Tag>
+                  ) : null}
+                </div>
+                <Space wrap size={10}>
+                  <Tooltip title="新标签打开全屏菜单展示，适合电视或投影">
+                    <Button
+                      className="menu-workspace-screen-btn"
+                      icon={<FundProjectionScreenOutlined />}
+                      href={appPath('/menu-screen')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      菜单大屏
+                    </Button>
+                  </Tooltip>
+                  <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!canEditMenu}>
+                    新建菜品
+                  </Button>
+                </Space>
               </div>
-              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} disabled={!canEditMenu}>
-                新建菜品
-              </Button>
-            </div>
-          </Card>
-
-          <Card className="manage-table-card">
-            <div className="compact-summary-inline">
-              <Tag color="blue">菜品总数 {total}</Tag>
-              <Tag color="purple">本页显示 {menus.length}</Tag>
-              <Tag color="orange">本页缺图 {menusWithoutImage}</Tag>
-              <Tag color="gold">本页有规格 {menusWithSpecs}</Tag>
+              <div className="compact-summary-inline compact-summary-inline--dense">
+                <Tag color="blue">菜品总数 {total}</Tag>
+                <Tag color="purple">本页显示 {menus.length}</Tag>
+                <Tag color="orange">本页缺图 {menusWithoutImage}</Tag>
+                <Tag color="gold">本页有规格 {menusWithSpecs}</Tag>
+              </div>
             </div>
         <Table
           rowKey="id"
@@ -1911,11 +1942,11 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
             emptyText: <Empty className="table-empty-state" description="暂无菜品，先新增一道菜品吧" />,
           }}
           columns={[
-            { title: 'ID', dataIndex: 'id', width: 200, className: 'table-col-id' },
+            { title: 'ID', dataIndex: 'id', width: 160, className: 'table-col-id' },
             {
               title: '图片',
               dataIndex: 'image',
-              width: 88,
+              width: 80,
               render: (url: string | undefined) => {
                 const normalized = normalizeImageUrl(url)
                 return normalized ? (
@@ -1940,31 +1971,25 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
                 )
               },
             },
-            { title: '菜品名称', dataIndex: 'name', width: 200, ellipsis: true },
+            { title: '菜品名称', dataIndex: 'name', width: 160, ellipsis: true },
             {
               title: '价格',
               dataIndex: 'price',
-              width: 108,
+              width: 88,
               className: 'table-col-amount',
               render: (value: number) => <Tag color="red">¥{value.toFixed(2)}</Tag>,
             },
             {
               title: '分类',
               dataIndex: 'category_id',
-              width: 140,
+              width: 108,
               ellipsis: true,
               render: (id: string) => <Tag color="blue">{categoryMap[id] ?? id}</Tag>,
             },
             {
-              title: '描述',
-              dataIndex: 'description',
-              ellipsis: true,
-              render: (value?: string) => value || '-',
-            },
-            {
               title: '规格',
               dataIndex: 'specs',
-              width: 260,
+              width: 168,
               render: (value?: MenuSpec[]) => {
                 const grouped = new Map<string, string[]>()
                 asArray(value).forEach((item) => {
@@ -1985,14 +2010,22 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
               },
             },
             {
+              title: '描述',
+              dataIndex: 'description',
+              width: 120,
+              ellipsis: { showTitle: true },
+              render: (value?: string) => value || '-',
+            },
+            {
               title: '创建时间',
               dataIndex: 'created_at',
-              width: 172,
+              width: 156,
+              className: 'table-col-datetime',
               render: (value?: string) => formatDateTime(value),
             },
             {
               title: '操作',
-              width: 168,
+              width: 160,
               fixed: 'right',
               className: 'table-col-actions',
               render: (_, record: Menu) => (
@@ -2018,13 +2051,16 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
             onChange: setPage,
           }}
         />
-      </Card>
+          </Card>
         </div>
       </div>
 
       <Modal
         className="manage-modal"
-        title={editingCategoryId == null ? '新建分类' : '编辑分类'}
+        title={renderManageModalTitle(
+          editingCategoryId == null ? '新建分类' : '编辑分类',
+          '分类会影响菜单工作台展示顺序，也可继续维护分类规格。'
+        )}
         open={categoryModalOpen}
         onCancel={() => setCategoryModalOpen(false)}
         afterOpenChange={(open) => {
@@ -2075,21 +2111,30 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
         }
       >
         <Form form={categoryForm} layout="vertical" style={{ marginTop: 12 }}>
-          <Form.Item name="name" label="分类名称" rules={[{ required: true, message: '请输入分类名称' }]}>
-            <Input placeholder="如：热菜" />
-          </Form.Item>
-          <Form.Item name="description" label="描述">
-            <Input.TextArea rows={3} placeholder="选填" />
-          </Form.Item>
-          <Form.Item name="sort" label="排序" extra="数字越小越靠前">
-            <InputNumber min={0} step={1} style={{ width: '100%' }} placeholder="0" />
-          </Form.Item>
+          <Typography.Text className="modal-note">
+            建议分类名称简短清晰，排序越小越靠前。
+          </Typography.Text>
+          <div className="manage-form-card">
+            <span className="manage-form-card-title">分类信息</span>
+            <Form.Item name="name" label="分类名称" rules={[{ required: true, message: '请输入分类名称' }]}>
+              <Input placeholder="如：热菜" />
+            </Form.Item>
+            <Form.Item name="description" label="描述">
+              <Input.TextArea rows={3} placeholder="选填" />
+            </Form.Item>
+            <Form.Item name="sort" label="排序" extra="数字越小越靠前" style={{ marginBottom: 0 }}>
+              <InputNumber min={0} step={1} style={{ width: '100%' }} placeholder="0" />
+            </Form.Item>
+          </div>
         </Form>
       </Modal>
 
       <Modal
         className="manage-modal"
-        title={editingId == null ? '新建菜品' : '编辑菜品'}
+        title={renderManageModalTitle(
+          editingId == null ? '新建菜品' : '编辑菜品',
+          '先完善基础信息，再按需配置分类规格、自定义规格组和价格。'
+        )}
         open={modalOpen}
         onOk={onModalOk}
         onCancel={() => setModalOpen(false)}
@@ -2343,7 +2388,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
           </div>
         </Form>
       </Modal>
-    </div>
+    </>
   )
 }
 
@@ -2359,17 +2404,8 @@ export default function MenuManage() {
   }
 
   return (
-    <div className="manage-shell">
-      <Card className="manage-hero-card">
-        <Typography.Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
-          菜单管理
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          统一维护分类、菜品、图片和规格，保证点餐页和订单页展示清晰一致。
-        </Typography.Text>
-      </Card>
-
-      <Card className="manage-panel-card">
+    <div className="manage-shell menu-manage-shell">
+      <Card className="manage-panel-card menu-manage-tab-shell">
         <Tabs
           className="manage-tabs"
           activeKey={workspaceTab}

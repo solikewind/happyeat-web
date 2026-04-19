@@ -29,10 +29,11 @@ export function normalizeMenuCategory(raw: unknown): MenuCategory {
   }
 }
 
+/** 与后端 UpdateMenuCategoryReq 一致：全量提交 name、description、sort（description 可空串表示清空备注） */
 export interface UpdateMenuCategoryBody {
   name: string
-  description?: string
-  sort?: number
+  description: string
+  sort: number
 }
 
 // ============ 菜单分类 ============
@@ -66,17 +67,14 @@ export async function getMenuCategory(id: string): Promise<{ category: MenuCateg
   return { category: normalizeMenuCategory(data?.category) }
 }
 
-/** 更新分类；不传 description 表示不修改描述（仅改排序时请省略 description） */
-export async function updateMenuCategory(id: string, body: { name: string; description?: string; sort?: number }): Promise<void> {
+/** 更新分类（全量）：必须带齐 name、description、sort，避免仅改排序时遗漏 description 被后端当成清空 */
+export async function updateMenuCategory(id: string, body: UpdateMenuCategoryBody): Promise<void> {
   const sort = Math.round(Number(body.sort ?? 0))
-  const payload: Record<string, unknown> = {
+  await api.put(`/central/v1/menu/category/${id}`, {
     name: body.name,
+    description: body.description ?? '',
     sort,
-  }
-  if (body.description !== undefined) {
-    payload.description = body.description
-  }
-  await api.put(`/central/v1/menu/category/${id}`, payload)
+  })
 }
 
 /** 删除分类 */

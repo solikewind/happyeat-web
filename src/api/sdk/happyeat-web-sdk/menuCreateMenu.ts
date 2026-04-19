@@ -5,7 +5,6 @@ import request from "../../request";
 /** 创建菜单 POST /central/v1/menus */
 export async function menuCreateMenu(
   body: {
-    /** 十进制整数字符串（uint64，避免 JS Number 精度丢失） */
     category_id: string;
     description?: string;
     image?: string;
@@ -15,8 +14,11 @@ export async function menuCreateMenu(
     specs?: {
       category_spec_id?: string;
       price_delta: number;
-      sort: number;
+      sort?: number;
+      source?: string;
       spec_item_id?: string;
+      spec_type?: string;
+      spec_value?: string;
     }[];
   },
   options?: { [key: string]: any }

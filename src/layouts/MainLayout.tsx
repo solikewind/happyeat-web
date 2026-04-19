@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type SetStateAction } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Avatar, Breadcrumb, Button, Drawer, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
 import {
@@ -24,48 +24,91 @@ import type { PermissionKey } from '../auth/permissions'
 
 const { Header, Sider, Content } = Layout
 
-const navItems = [
-  { key: '/', icon: <HomeOutlined />, label: '首页', description: '经营概览与快捷入口', permission: 'home:view' as PermissionKey },
+type NavItemConfig = {
+  key: string
+  icon: React.ReactNode
+  label: string
+  description: string
+  permission: PermissionKey
+}
+
+const navItems: NavItemConfig[] = [
+  { key: '/', icon: <HomeOutlined />, label: '首页', description: '经营概览与快捷入口', permission: 'home:view' },
   {
     key: '/workbench',
     icon: <DashboardOutlined />,
     label: '工作台',
     description: '后厨制作与出单处理',
-    permission: 'workbench:view' as PermissionKey,
+    permission: 'workbench:view',
   },
   {
     key: '/orders',
     icon: <ShoppingOutlined />,
     label: '订单管理',
     description: '订单查询与状态跟进',
-    permission: 'orders:view' as PermissionKey,
+    permission: 'orders:view',
   },
   {
     key: '/order-desk',
     icon: <ShoppingCartOutlined />,
     label: '点餐台',
     description: '快速下单与购物车结算',
-    permission: 'order_desk:view' as PermissionKey,
+    permission: 'order_desk:view',
   },
-  { key: '/menu', icon: <MenuOutlined />, label: '菜单管理', description: '维护菜品与分类信息', permission: 'menu:view' as PermissionKey },
-  { key: '/tables', icon: <TableOutlined />, label: '餐桌管理', description: '查看桌台状态和容量', permission: 'table:view' as PermissionKey },
+  { key: '/menu', icon: <MenuOutlined />, label: '菜单管理', description: '维护菜品与分类信息', permission: 'menu:view' },
+  { key: '/tables', icon: <TableOutlined />, label: '餐桌管理', description: '查看桌台状态和容量', permission: 'table:view' },
   {
     key: '/table-map',
     icon: <LayoutOutlined />,
     label: '餐桌平面图',
     description: '厅面布局与订单高亮',
-    permission: 'table:view' as PermissionKey,
+    permission: 'table:view',
   },
   {
     key: '/permissions',
     icon: <SettingOutlined />,
     label: '权限管理',
     description: '角色权限矩阵与页面操作控制',
-    permission: 'permission:view' as PermissionKey,
+    permission: 'permission:view',
   },
 ]
 
 const pageMeta = Object.fromEntries(navItems.map((item) => [item.key, item]))
+
+function renderNavItemLabel(
+  item: NavItemConfig,
+  ctx: {
+    selectedKey: string
+    isBreakpointBroken: boolean
+    collapsed: boolean
+    setCollapsed: (value: SetStateAction<boolean>) => void
+    onMobileClose?: () => void
+  }
+) {
+  const showToggle = !ctx.isBreakpointBroken && !ctx.collapsed && item.key === ctx.selectedKey
+
+  return (
+    <div className="app-nav-item-label">
+      <Link to={item.key} onClick={() => ctx.onMobileClose?.()}>
+        <span>{item.label}</span>
+      </Link>
+      {showToggle ? (
+        <Tooltip title={ctx.collapsed ? '展开侧边栏' : '收起侧边栏'}>
+          <Button
+            className="app-sider-toggle app-sider-toggle-in-menu"
+            size="small"
+            icon={ctx.collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              ctx.setCollapsed((prev) => !prev)
+            }}
+          />
+        </Tooltip>
+      ) : null}
+    </div>
+  )
+}
 
 export default function MainLayout() {
   const location = useLocation()
@@ -123,29 +166,15 @@ export default function MainLayout() {
             mode="inline"
             inlineCollapsed={collapsed}
             items={visibleNavItems.map((item) => ({
-              ...item,
+              key: item.key,
+              icon: item.icon,
               title: item.label,
-              label: (
-                <div className="app-nav-item-label">
-                  <Link to={item.key}>
-                    <span>{item.label}</span>
-                  </Link>
-                  {!isBreakpointBroken && !collapsed && item.key === selectedKey && (
-                    <Tooltip title={collapsed ? '展开侧边栏' : '收起侧边栏'}>
-                      <Button
-                        className="app-sider-toggle app-sider-toggle-in-menu"
-                        size="small"
-                        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          setCollapsed((prev) => !prev)
-                        }}
-                      />
-                    </Tooltip>
-                  )}
-                </div>
-              ),
+              label: renderNavItemLabel(item, {
+                selectedKey,
+                isBreakpointBroken,
+                collapsed,
+                setCollapsed,
+              }),
             }))}
           />
           {!isBreakpointBroken && collapsed && (
@@ -201,13 +230,16 @@ export default function MainLayout() {
               selectedKeys={[selectedKey]}
               mode="inline"
               items={visibleNavItems.map((item) => ({
-                ...item,
+                key: item.key,
+                icon: item.icon,
                 title: item.label,
-                label: (
-                  <Link to={item.key} onClick={() => setMobileNavOpen(false)}>
-                    <span>{item.label}</span>
-                  </Link>
-                ),
+                label: renderNavItemLabel(item, {
+                  selectedKey,
+                  isBreakpointBroken,
+                  collapsed,
+                  setCollapsed,
+                  onMobileClose: () => setMobileNavOpen(false),
+                }),
               }))}
             />
           </Drawer>

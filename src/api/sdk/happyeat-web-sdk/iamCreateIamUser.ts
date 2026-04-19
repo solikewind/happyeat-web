@@ -2,17 +2,15 @@
 /* eslint-disable */
 import request from "../../request";
 
-/** 创建规格项 POST /central/v1/spec/item */
-export async function specCreateSpecItem(
+/** 创建用户（仅主体档案，分配角色用 user-roles 接口） POST /central/v1/iam/users */
+export async function iamCreateIamUser(
   body: {
-    default_price?: number;
-    name: string;
-    sort?: number;
-    spec_group_id: string;
+    display_name?: string;
+    user_code: string;
   },
   options?: { [key: string]: any }
 ) {
-  return request<Record<string, any>>("/central/v1/spec/item", {
+  return request<{ id?: string }>("/central/v1/iam/users", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

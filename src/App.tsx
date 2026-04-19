@@ -18,6 +18,7 @@ const OrderManage = lazy(() => import('./pages/OrderManage'))
 const OrderDesk = lazy(() => import('./pages/OrderDesk'))
 const Workbench = lazy(() => import('./pages/Workbench'))
 const PermissionManage = lazy(() => import('./pages/PermissionManage'))
+const MenuBigScreen = lazy(() => import('./pages/MenuBigScreen'))
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAuth()
@@ -64,6 +65,16 @@ function AppRoutes() {
                 </Button>
               }
             />
+          }
+        />
+        <Route
+          path="/menu-screen"
+          element={
+            <ProtectedRoute>
+              <PermissionRoute permission="menu:view">
+                <MenuBigScreen />
+              </PermissionRoute>
+            </ProtectedRoute>
           }
         />
         <Route

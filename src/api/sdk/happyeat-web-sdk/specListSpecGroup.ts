@@ -18,7 +18,7 @@ export async function specListSpecGroup(
       created_at: string;
       id: string;
       name: string;
-      sort: number;
+      sort?: number;
       updated_at: string;
     }[];
     total?: number;

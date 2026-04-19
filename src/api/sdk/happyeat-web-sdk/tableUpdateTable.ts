@@ -8,7 +8,6 @@ export async function tableUpdateTable(
   params: API.tableUpdateTableParams,
   body: {
     capacity?: number;
-    /** 十进制整数字符串（uint64，避免 JS Number 精度丢失） */
     category_id: string;
     code: string;
     qr_code?: string;

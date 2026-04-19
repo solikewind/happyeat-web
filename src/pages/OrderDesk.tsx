@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Button, Card, Empty, Form, InputNumber, Popconfirm, Popover, Radio, Space, Statistic, Tabs, Tag, Typography, message } from 'antd'
-import { PlusOutlined, MinusOutlined, AudioOutlined, SoundOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Empty, Form, Input, InputNumber, Popconfirm, Popover, Radio, Space, Statistic, Tabs, Tag, Typography, message } from 'antd'
+import { PlusOutlined, MinusOutlined, AudioOutlined, SearchOutlined, SoundOutlined } from '@ant-design/icons'
 import type { Menu, MenuCategory, MenuSpec, Table as TableType } from '../api/types'
 import { listMenuCategories, listMenus } from '../api/menu'
 import { listTables } from '../api/table'
@@ -39,6 +39,8 @@ export default function OrderDesk() {
   const [tableId, setTableId] = useState<string | undefined>(undefined)
   const [submitting, setSubmitting] = useState(false)
   const [cardSelections, setCardSelections] = useState<Record<string, { quantity: number; selectedSpecs: MenuSpec[] }>>({})
+  /** 当前分类下列表内的菜品名称过滤（前端过滤，与已加载数据联动） */
+  const [menuSearchKeyword, setMenuSearchKeyword] = useState('')
 
   const { isSupported: sttSupported, listening, transcript, finalTranscript, start: startSTT, stop: stopSTT } = useSTT({
     lang: 'zh-CN',
@@ -89,6 +91,12 @@ export default function OrderDesk() {
 
   const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart])
   const selectedTable = useMemo(() => tables.find((item) => item.id === tableId), [tableId, tables])
+
+  const filteredMenus = useMemo(() => {
+    const q = menuSearchKeyword.trim().toLowerCase()
+    if (!q) return menus
+    return menus.filter((m) => m.name.toLowerCase().includes(q))
+  }, [menus, menuSearchKeyword])
 
   useEffect(() => {
     loadCategories()
@@ -158,6 +166,10 @@ export default function OrderDesk() {
 
     if (ttsSupported) {
       speak(`已添加${finalQuantity}份${menu.name}，价格${price}元`)
+    }
+
+    if (menuSearchKeyword.trim()) {
+      setMenuSearchKeyword('')
     }
   }
 
@@ -304,44 +316,62 @@ export default function OrderDesk() {
   return (
     <div className="order-desk-layout">
       <div className="order-desk-main">
-        <div className="page-toolbar page-toolbar-actions-only">
-          {sttSupported && (
-            <Space>
-              {listening ? (
-                <Popover content={`正在识别：${transcript || '请说话...'}`} trigger="click">
-                  <Button type="primary" danger icon={<AudioOutlined />} onClick={stopSTT}>
-                    停止识别
-                  </Button>
-                </Popover>
-              ) : (
-                <Popover
-                  content={
-                    <div>
-                      <p>点击开始语音点菜</p>
-                      <p style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-                        可以说："来两份宫保鸡丁和一份鱼香肉丝，再要一个可乐"
-                      </p>
-                    </div>
-                  }
-                  trigger="hover"
-                >
-                  <Button className="app-accent-cta-subtle" type="default" icon={<AudioOutlined />} onClick={startSTT}>
-                    语音点餐
-                  </Button>
-                </Popover>
-              )}
-            </Space>
-          )}
-        </div>
-
         <Card className="order-desk-filter-card">
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <Space wrap size={[8, 8]}>
               <Tag color="blue">分类 {categories.length}</Tag>
               <Tag color="purple">菜品 {menus.length}</Tag>
+              {menuSearchKeyword.trim() ? (
+                <Tag color="cyan">匹配 {filteredMenus.length}</Tag>
+              ) : null}
               <Tag color="gold">已选 {cartItemCount}</Tag>
             </Space>
-            <Tabs className="order-desk-tabs" activeKey={activeCategory} onChange={setActiveCategory} items={tabItems} />
+            <div className="order-desk-search-row">
+              <Input
+                allowClear
+                className="order-desk-menu-search"
+                placeholder="搜索菜品名称"
+                prefix={<SearchOutlined style={{ color: 'rgba(0,0,0,0.35)' }} />}
+                value={menuSearchKeyword}
+                onChange={(e) => setMenuSearchKeyword(e.target.value)}
+              />
+              {sttSupported ? (
+                <Space size={8} wrap className="order-desk-voice-actions">
+                  {listening ? (
+                    <Popover content={`正在识别：${transcript || '请说话...'}`} trigger="click">
+                      <Button type="primary" danger icon={<AudioOutlined />} onClick={stopSTT}>
+                        停止识别
+                      </Button>
+                    </Popover>
+                  ) : (
+                    <Popover
+                      content={
+                        <div>
+                          <p>点击开始语音点菜</p>
+                          <p style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+                            可以说："来两份宫保鸡丁和一份鱼香肉丝，再要一个可乐"
+                          </p>
+                        </div>
+                      }
+                      trigger="hover"
+                    >
+                      <Button className="app-accent-cta-subtle" type="default" icon={<AudioOutlined />} onClick={startSTT}>
+                        语音点餐
+                      </Button>
+                    </Popover>
+                  )}
+                </Space>
+              ) : null}
+            </div>
+            <Tabs
+              className="order-desk-tabs"
+              activeKey={activeCategory}
+              onChange={(key) => {
+                setActiveCategory(key)
+                setMenuSearchKeyword('')
+              }}
+              items={tabItems}
+            />
           </Space>
         </Card>
 
@@ -349,9 +379,13 @@ export default function OrderDesk() {
           <Card className="order-desk-filter-card" style={{ marginTop: 18 }}>
             <Empty description="暂无菜品" />
           </Card>
+        ) : filteredMenus.length === 0 && !loading ? (
+          <Card className="order-desk-filter-card" style={{ marginTop: 18 }}>
+            <Empty description="没有匹配的菜品，可清空搜索或切换分类" />
+          </Card>
         ) : (
           <div className="order-desk-grid">
-            {menus.map((menu) => {
+            {filteredMenus.map((menu) => {
               const { quantity, selectedSpecs } = getSelection(menu)
               const unitPrice = menu.price + selectedSpecs.reduce((sum, s) => sum + (s.price_delta ?? 0), 0)
               const specsByType = new Map<string, MenuSpec[]>()
@@ -389,11 +423,6 @@ export default function OrderDesk() {
                         <Typography.Title level={5} style={{ margin: 0 }}>
                           {menu.name}
                         </Typography.Title>
-                        {menu.description ? (
-                          <Typography.Paragraph type="secondary" ellipsis={{ rows: 2, tooltip: menu.description }} style={{ margin: '4px 0 0' }}>
-                            {menu.description}
-                          </Typography.Paragraph>
-                        ) : null}
                       </div>
                       <Space size={4}>
                         {ttsSupported && <Button type="text" size="small" icon={<SoundOutlined />} onClick={() => speakMenuInfo(menu)} />}
@@ -469,6 +498,68 @@ export default function OrderDesk() {
         )}
       </div>
 
+      <div className="order-desk-cart-pane">
+        <Card className="order-desk-cart-card">
+          <Space direction="vertical" size={14} style={{ width: '100%' }}>
+            <div className="page-toolbar" style={{ marginBottom: 0 }}>
+              <div>
+                <Typography.Title level={5} style={{ margin: 0 }}>
+                  购物车
+                </Typography.Title>
+                <Typography.Text type="secondary">
+                  已选择 {cart.length} 种菜品，共 {cartItemCount} 份
+                </Typography.Text>
+              </div>
+            </div>
+
+            {cart.length === 0 ? (
+              <Empty description="请先在左侧选菜并加入购物车" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            ) : (
+              <div className="order-desk-cart-list">
+                {cart.map((item, idx) => (
+                  <div key={`${item.menuId}-${item.specInfo ?? ''}-${idx}`} className="order-desk-cart-item">
+                    <div className="order-desk-cart-thumb">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          onError={(e) => {
+                            ;(e.target as HTMLImageElement).style.display = 'none'
+                          }}
+                        />
+                      ) : (
+                        <div className="order-desk-cart-thumb-empty">无图</div>
+                      )}
+                    </div>
+                    <div className="order-desk-cart-meta">
+                      <Typography.Text strong className="order-desk-cart-name">
+                        {item.name}
+                      </Typography.Text>
+                      {item.specInfo ? (
+                        <Typography.Text type="secondary" className="order-desk-cart-spec">
+                          {item.specInfo}
+                        </Typography.Text>
+                      ) : null}
+                      <div className="order-desk-cart-price-row">
+                        <span className="order-desk-cart-unit-price">¥{item.price.toFixed(2)}</span>
+                        {item.quantity > 1 ? (
+                          <span className="order-desk-cart-line-total">小计 ¥{(item.price * item.quantity).toFixed(2)}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <Space size={2} className="order-desk-cart-actions">
+                      <Button type="text" size="small" icon={<MinusOutlined />} onClick={() => updateCartQty(item.menuId, item.specInfo, -1)} />
+                      <strong className="order-desk-cart-qty">{item.quantity}</strong>
+                      <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => updateCartQty(item.menuId, item.specInfo, 1)} />
+                    </Space>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Space>
+        </Card>
+      </div>
+
       <div className="order-desk-summary-pane">
         <Card className="order-desk-summary-card">
           <Space direction="vertical" size={18} style={{ width: '100%' }}>
@@ -532,62 +623,6 @@ export default function OrderDesk() {
                 提交订单
               </Button>
             </Popconfirm>
-          </Space>
-        </Card>
-
-      </div>
-
-      <div className="order-desk-cart-pane">
-        <Card className="order-desk-cart-card">
-          <Space direction="vertical" size={14} style={{ width: '100%' }}>
-            <div className="page-toolbar" style={{ marginBottom: 0 }}>
-              <div>
-                <Typography.Title level={5} style={{ margin: 0 }}>
-                  购物车
-                </Typography.Title>
-                <Typography.Text type="secondary">
-                  已选择 {cart.length} 种菜品，共 {cartItemCount} 份
-                </Typography.Text>
-              </div>
-            </div>
-
-            {cart.length === 0 ? (
-              <Empty description="先从左侧选择菜品加入购物车" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-            ) : (
-              <div className="order-desk-cart-list">
-                {cart.map((item, idx) => (
-                  <div key={`${item.menuId}-${item.specInfo ?? ''}-${idx}`} className="order-desk-cart-item">
-                    <div className="order-desk-cart-thumb">
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          onError={(e) => {
-                            ;(e.target as HTMLImageElement).style.display = 'none'
-                          }}
-                        />
-                      ) : (
-                        <div className="order-desk-cart-thumb-empty">无图</div>
-                      )}
-                    </div>
-                    <div className="order-desk-cart-meta">
-                      <Typography.Text strong className="order-desk-cart-name">
-                        {item.name}
-                      </Typography.Text>
-                      <Typography.Text type="secondary" className="order-desk-cart-subline">
-                        {item.specInfo ? `${item.specInfo} · ` : ''}
-                        <span className="order-desk-cart-price">¥{item.price.toFixed(2)}</span>
-                      </Typography.Text>
-                    </div>
-                    <Space size={2} className="order-desk-cart-actions">
-                      <Button type="text" size="small" icon={<MinusOutlined />} onClick={() => updateCartQty(item.menuId, item.specInfo, -1)} />
-                      <strong className="order-desk-cart-qty">{item.quantity}</strong>
-                      <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => updateCartQty(item.menuId, item.specInfo, 1)} />
-                    </Space>
-                  </div>
-                ))}
-              </div>
-            )}
           </Space>
         </Card>
       </div>

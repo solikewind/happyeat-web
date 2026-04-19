@@ -1,9 +1,16 @@
 declare namespace API {
   type AnyParams = Record<string, any>;
 
+  type iamDeleteIAMRoleParams = AnyParams;
+  type iamDeleteIAMUserParams = AnyParams;
+  type iamGetIAMPermissionParams = AnyParams;
+  type iamGetIAMRoleParams = AnyParams;
+  type iamGetIAMUserParams = AnyParams;
   type iamListIAMPermissionsParams = AnyParams;
   type iamListIAMRolesParams = AnyParams;
   type iamListIAMUsersParams = AnyParams;
+  type iamUpdateIAMRoleParams = AnyParams;
+  type iamUpdateIAMUserParams = AnyParams;
   type menuDeleteMenuParams = AnyParams;
   type menuGetMenuParams = AnyParams;
   type menuListMenuParams = AnyParams;
@@ -15,6 +22,7 @@ declare namespace API {
   type orderGetOrderParams = AnyParams;
   type orderListOrderParams = AnyParams;
   type orderUpdateOrderStatusParams = AnyParams;
+  type rbacGetRolePermissionParams = AnyParams;
   type rbacUpdateRolePermissionsParams = AnyParams;
   type specDeleteCategorySpecParams = AnyParams;
   type specDeleteSpecGroupParams = AnyParams;

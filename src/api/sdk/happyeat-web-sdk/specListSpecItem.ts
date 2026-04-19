@@ -10,7 +10,6 @@ export async function specListSpecItem(
     current?: number;
     name?: string;
     pageSize?: number;
-    /** 十进制整数字符串（uint64，避免 JS Number 精度丢失） */
     spec_group_id?: string;
   },
   options?: { [key: string]: any }
@@ -21,6 +20,7 @@ export async function specListSpecItem(
       default_price: number;
       id: string;
       name: string;
+      sort?: number;
       spec_group_id: string;
       updated_at: string;
     }[];

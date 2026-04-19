@@ -15,7 +15,7 @@ export async function iamListIamPermissions(
   options?: { [key: string]: any }
 ) {
   return request<{
-    permissions?: { code: string; description: string }[];
+    permissions?: { code: string; description: string; id: string }[];
     total?: number;
   }>("/central/v1/iam/permissions", {
     method: "GET",

@@ -2,19 +2,17 @@
 /* eslint-disable */
 import request from "../../request";
 
-/** 更新菜单种类 PUT /central/v1/menu/category/${param0} */
-export async function menucategoryUpdateMenuCategory(
+/** 更新角色展示名（role_code 不可改） PUT /central/v1/iam/roles/${param0} */
+export async function iamUpdateIamRole(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.menucategoryUpdateMenuCategoryParams,
+  params: API.iamUpdateIAMRoleParams,
   body: {
-    description: string;
-    name: string;
-    sort: number;
+    role_name: string;
   },
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<Record<string, any>>(`/central/v1/menu/category/${param0}`, {
+  return request<Record<string, any>>(`/central/v1/iam/roles/${param0}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

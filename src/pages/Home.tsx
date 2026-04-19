@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, Card, Col, Row, Space, Statistic, Typography, message } from 'antd'
+import { Button, Card, Col, Row, Space, Statistic, Tooltip, Typography, message } from 'antd'
 import {
   ArrowRightOutlined,
   BulbOutlined,
   DashboardOutlined,
+  FundProjectionScreenOutlined,
   LayoutOutlined,
   MenuOutlined,
   ShoppingCartOutlined,
@@ -17,6 +18,10 @@ import { listOrders } from '../api/order'
 import { listTables } from '../api/table'
 import type { Order, Table } from '../api/types'
 import type { ReactNode } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import type { PermissionKey } from '../auth/permissions'
+import { appPath } from '../utils/appPath'
+import { isActiveOrderStatus } from '../utils/orderStatus'
 
 const HISTORY_DAYS = 14
 const HISTORY_PAGE_SIZE = 200
@@ -30,6 +35,11 @@ interface QuickEntry {
   description: string
   icon: ReactNode
   accent: EntryAccent
+  /** 与侧栏一致：新标签打开（如菜单大屏） */
+  openInNewTab?: boolean
+  /** 未配置则始终展示；配置后需具备对应权限 */
+  permission?: PermissionKey
+  ctaLabel?: string
 }
 
 interface EntryGroup {
@@ -82,6 +92,16 @@ const entryGroups: EntryGroup[] = [
         description: '分类、菜品与规格维护，决定前台展示与价格。',
         icon: <MenuOutlined />,
         accent: 'emerald',
+      },
+      {
+        path: '/menu-screen',
+        title: '菜单大屏',
+        description: '全屏展示菜品图与名称，适合电视或投影；不影响当前页。',
+        icon: <FundProjectionScreenOutlined />,
+        accent: 'violet',
+        openInNewTab: true,
+        permission: 'menu:view',
+        ctaLabel: '新标签打开',
       },
       {
         path: '/tables',
@@ -139,7 +159,15 @@ const createHistorySeed = () => {
   return { points, startTs: Math.floor(startDate.getTime() / 1000) }
 }
 
+/** 订单 created_at（RFC3339）转 Unix 秒，与 createHistorySeed 的 startTs 对齐 */
+function orderCreatedAtSeconds(order: Pick<Order, 'created_at'>): number {
+  if (!order.created_at) return 0
+  const t = new Date(order.created_at).getTime()
+  return Number.isFinite(t) ? Math.floor(t / 1000) : 0
+}
+
 export default function Home() {
+  const { can } = useAuth()
   const [loading, setLoading] = useState(false)
   const [menuTotal, setMenuTotal] = useState(0)
   const [tableTotal, setTableTotal] = useState(0)
@@ -171,7 +199,7 @@ export default function Home() {
             if (!pageOrders.length) break
 
             allHistoryOrders.push(...pageOrders)
-            const oldestTs = Number(pageOrders[pageOrders.length - 1]?.create_at) || 0
+            const oldestTs = orderCreatedAtSeconds(pageOrders[pageOrders.length - 1])
 
             if (oldestTs > 0 && oldestTs < startTs) break
             if (allHistoryOrders.length >= totalOrders) break
@@ -180,7 +208,7 @@ export default function Home() {
 
         const historyMap = new Map(points.map((item) => [item.key, 0]))
         allHistoryOrders.forEach((item) => {
-          const createAt = Number(item?.create_at) || 0
+          const createAt = orderCreatedAtSeconds(item)
           if (!createAt || createAt < startTs) return
           const dayKey = formatDayKey(new Date(createAt * 1000))
           if (!historyMap.has(dayKey)) return
@@ -191,10 +219,7 @@ export default function Home() {
         setTableTotal(Number(tableRes?.total) || 0)
         setBusyTableTotal(tables.filter((item: Table) => item.status === 'using').length)
         setOrderTotal(totalOrders)
-        setPendingOrderTotal(
-          firstPageOrders.filter((item: Order) => item.status === 'created' || item.status === 'paid' || item.status === 'preparing')
-            .length
-        )
+        setPendingOrderTotal(firstPageOrders.filter((item: Order) => isActiveOrderStatus(item.status)).length)
         setOrderHistory(points.map((item) => ({ ...item, value: historyMap.get(item.key) || 0 })))
       } catch {
         message.error('概览数据加载失败，请稍后重试')
@@ -210,6 +235,7 @@ export default function Home() {
     () =>
       [
         {
+          key: 'on_sale_menu',
           title: '在售菜品',
           value: menuTotal,
           suffix: '道',
@@ -218,6 +244,7 @@ export default function Home() {
           accent: 'emerald' as const,
         },
         {
+          key: 'table_total',
           title: '桌位总数',
           value: tableTotal,
           suffix: '桌',
@@ -226,6 +253,7 @@ export default function Home() {
           accent: 'slate' as const,
         },
         {
+          key: 'busy_tables',
           title: '用餐中',
           value: busyTableTotal,
           suffix: '桌',
@@ -234,6 +262,7 @@ export default function Home() {
           accent: 'amber' as const,
         },
         {
+          key: 'pending_orders',
           title: '待跟进单',
           value: pendingOrderTotal,
           suffix: '单',
@@ -310,9 +339,23 @@ export default function Home() {
 
       <Row gutter={[16, 16]} className="home-stat-row">
         {statCards.map((item) => (
-          <Col key={item.title} xs={24} sm={12} lg={6}>
+          <Col key={item.key} xs={24} sm={12} lg={6}>
             <Card className={`home-stat-card home-stat-card--${item.accent}`} loading={loading}>
               <div className="home-stat-inner">
+                {item.key === 'on_sale_menu' && can('menu:view') ? (
+                  <Tooltip title="新标签打开全屏菜单展示">
+                    <a
+                      href={appPath('/menu-screen')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="home-stat-screen-pill"
+                    >
+                      <span className="home-stat-screen-pill-glow" aria-hidden />
+                      <FundProjectionScreenOutlined className="home-stat-screen-pill-icon" />
+                      <span className="home-stat-screen-pill-text">大屏</span>
+                    </a>
+                  </Tooltip>
+                ) : null}
                 <span className={`home-stat-icon home-stat-icon--${item.accent}`}>{item.icon}</span>
                 <div className="home-stat-body">
                   <Statistic title={item.title} value={item.value} suffix={item.suffix} />
@@ -381,9 +424,10 @@ export default function Home() {
               </Typography.Text>
             </div>
             <Row gutter={[16, 16]}>
-              {group.entries.map((item) => (
-                <Col key={item.path} xs={24} sm={12} xl={8}>
-                  <Link to={item.path}>
+              {group.entries
+                .filter((item) => !item.permission || can(item.permission))
+                .map((item) => {
+                  const card = (
                     <Card hoverable className={`home-entry-card home-entry-card--${item.accent}`}>
                       <div className="home-entry-top">
                         <span className={`home-entry-icon home-entry-icon--${item.accent}`}>{item.icon}</span>
@@ -396,12 +440,29 @@ export default function Home() {
                         {item.description}
                       </Typography.Paragraph>
                       <span className="home-entry-cta">
-                        进入模块 <ArrowRightOutlined />
+                        {item.ctaLabel ?? '进入模块'} <ArrowRightOutlined />
                       </span>
                     </Card>
-                  </Link>
-                </Col>
-              ))}
+                  )
+                  return (
+                    <Col key={item.path} xs={24} sm={12} xl={8}>
+                      {item.openInNewTab ? (
+                        <a
+                          href={appPath(item.path)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="home-entry-link home-entry-link--blank"
+                        >
+                          {card}
+                        </a>
+                      ) : (
+                        <Link to={item.path} className="home-entry-link">
+                          {card}
+                        </Link>
+                      )}
+                    </Col>
+                  )
+                })}
             </Row>
           </div>
         ))}

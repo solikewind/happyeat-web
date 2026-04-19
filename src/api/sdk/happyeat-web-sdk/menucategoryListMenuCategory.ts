@@ -19,6 +19,7 @@ export async function menucategoryListMenuCategory(
       description?: string;
       id: string;
       name: string;
+      sort?: number;
       updated_at: string;
     }[];
     total?: number;
