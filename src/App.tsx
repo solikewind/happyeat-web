@@ -6,9 +6,9 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider, useThemeMode } from './contexts/ThemeContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { normalizeRole, type PermissionKey } from './auth/permissions'
+import MainLayout from './layouts/MainLayout'
 import './App.css'
 
-const MainLayout = lazy(() => import('./layouts/MainLayout'))
 const Login = lazy(() => import('./pages/Login'))
 const Home = lazy(() => import('./pages/Home'))
 const MenuManage = lazy(() => import('./pages/MenuManage'))

@@ -28,6 +28,7 @@ export async function orderGetOrder(
       table_code?: string;
       table_id?: string;
       total_amount?: number;
+      actual_amount?: number;
       updated_at?: string;
     };
   }>(`/central/v1/order/${param0}`, {

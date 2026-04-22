@@ -33,6 +33,7 @@ export async function workbenchListWorkbenchOrder(
       table_code?: string;
       table_id?: string;
       total_amount: number;
+      actual_amount: number;
       updated_at: string;
     }[];
     total?: number;

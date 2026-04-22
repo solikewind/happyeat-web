@@ -17,6 +17,7 @@ export async function orderCreateOrder(
     /** 堂食必填 */
     table_id?: string;
     total_amount: number;
+    actual_amount?: number;
   },
   options?: { [key: string]: any }
 ) {
@@ -39,6 +40,7 @@ export async function orderCreateOrder(
       table_code?: string;
       table_id?: string;
       total_amount?: number;
+      actual_amount?: number;
       updated_at?: string;
     };
   }>("/central/v1/orders", {

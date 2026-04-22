@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
+  Badge,
   Button,
   Card,
   Checkbox,
+  Collapse,
   Empty,
   Form,
   Image,
@@ -1521,7 +1523,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
 
   const loadLibrarySpecs = useCallback(async () => {
     try {
-      const groupsRes = await listSpecGroups({ current: 1, pageSize: 200 })
+      const groupsRes = await listSpecGroups({ current: 1, pageSize: 500 })
       const groups = asArray(groupsRes?.groups)
       setLibraryGroups(groups)
       if (groups.length === 0) {
@@ -1532,7 +1534,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
         groups.map((group) =>
           listSpecItems({
             current: 1,
-            pageSize: 200,
+            pageSize: 500,
             spec_group_id: group.id,
           })
         )
@@ -1553,7 +1555,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
     try {
       const res = await listCategorySpecs({
         current: 1,
-        pageSize: 200,
+        pageSize: 500,
         category_id: categoryId,
       })
       setCategorySpecs(asArray(res?.specs))
@@ -1594,20 +1596,59 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
       if (!groups.has(key)) groups.set(key, [])
       groups.get(key)!.push(item)
     })
-    return Array.from(groups.entries()).map(([specType, items]) => ({ specType, items }))
+    return Array.from(groups.entries())
+      .map(([specType, items]) => ({
+        specType,
+        items: [...items].sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)),
+      }))
+      .sort((a, b) => {
+        const ak = a.items[0]?.sort ?? 0
+        const bk = b.items[0]?.sort ?? 0
+        if (ak !== bk) return ak - bk
+        return a.specType.localeCompare(b.specType, 'zh-CN')
+      })
   }, [categorySpecs])
   const librarySpecsByType = useMemo(() => {
     const groupNameMap = new Map(libraryGroups.map((item) => [item.id, item.name]))
-    const groups = new Map<string, SpecItem[]>()
+    const byName = new Map<string, SpecItem[]>()
     libraryItems.forEach((item) => {
       const key = groupNameMap.get(item.spec_group_id) || '未命名规格'
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push(item)
+      if (!byName.has(key)) byName.set(key, [])
+      byName.get(key)!.push(item)
     })
-    return Array.from(groups.entries()).map(([specType, items]) => ({ specType, items }))
+    const rows: { specType: string; items: SpecItem[] }[] = []
+    ;[...libraryGroups]
+      .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0))
+      .forEach((g) => {
+        const raw = byName.get(g.name)
+        if (!raw?.length) return
+        byName.delete(g.name)
+        rows.push({
+          specType: g.name,
+          items: [...raw].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN')),
+        })
+      })
+    Array.from(byName.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'zh-CN'))
+      .forEach(([specType, items]) => {
+        rows.push({
+          specType,
+          items: [...items].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN')),
+        })
+      })
+    return rows
   }, [libraryGroups, libraryItems])
   const allCategorySpecIds = useMemo(() => categorySpecs.map((item) => item.id), [categorySpecs])
   const allLibrarySpecItemIds = useMemo(() => libraryItems.map((item) => item.id), [libraryItems])
+  const customSpecGroupsWatch = Form.useWatch('custom_spec_groups', form) as CustomMenuSpecGroupFormValue[] | undefined
+  const customSpecGroupCount = useMemo(
+    () =>
+      asArray(customSpecGroupsWatch).filter(
+        (g) =>
+          Boolean(g?.spec_type?.trim()) && asArray(g?.items).some((i) => Boolean(i?.spec_value?.trim())),
+      ).length,
+    [customSpecGroupsWatch],
+  )
   const menusWithoutImage = useMemo(() => menus.filter((item) => !item.image).length, [menus])
   const menusWithSpecs = useMemo(() => menus.filter((item) => (item.specs?.length ?? 0) > 0).length, [menus])
 
@@ -1937,7 +1978,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
           loading={loading}
           dataSource={menus}
           tableLayout="fixed"
-          scroll={{ x: 1240 }}
+          scroll={{ x: 1360 }}
           locale={{
             emptyText: <Empty className="table-empty-state" description="暂无菜品，先新增一道菜品吧" />,
           }}
@@ -1989,7 +2030,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
             {
               title: '规格',
               dataIndex: 'specs',
-              width: 168,
+              width: 280,
               render: (value?: MenuSpec[]) => {
                 const grouped = new Map<string, string[]>()
                 asArray(value).forEach((item) => {
@@ -2001,11 +2042,16 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
                 return grouped.size === 0 ? (
                   '-'
                 ) : (
-                  <Space size={[4, 4]} wrap>
+                  <div className="menu-table-specs-cell">
                     {Array.from(grouped.entries()).map(([type, items]) => (
-                      <Tag key={type}>{`${type}：${items.join(' / ')}`}</Tag>
+                      <div key={type} className="menu-table-specs-line">
+                        <Typography.Text strong className="menu-table-specs-type">
+                          {type}
+                        </Typography.Text>
+                        <span className="menu-table-specs-values">{items.join('、')}</span>
+                      </div>
                     ))}
-                  </Space>
+                  </div>
                 )
               },
             },
@@ -2130,7 +2176,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
       </Modal>
 
       <Modal
-        className="manage-modal"
+        className="manage-modal menu-edit-modal"
         title={renderManageModalTitle(
           editingId == null ? '新建菜品' : '编辑菜品',
           '先完善基础信息，再按需配置分类规格、自定义规格组和价格。'
@@ -2142,7 +2188,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
         okText="保存"
         cancelText="取消"
         centered
-        width={720}
+        width={920}
         destroyOnClose
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
@@ -2177,214 +2223,281 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
             </Form.Item>
           </div>
 
-          <div className="manage-form-card">
-            <span className="manage-form-card-title">规格配置</span>
-            <Form.Item label="引用分类规格" style={{ marginBottom: 16 }}>
-              {selectedCategoryId && categorySpecs.length > 0 ? (
-                <div className="menu-spec-section-actions">
-                  <Button
-                    size="small"
-                    onClick={() => setSelectedCategorySpecIds(allCategorySpecIds)}
-                    disabled={!canEditMenu}
-                  >
-                    引入全部分类规格
-                  </Button>
-                  <Button
-                    size="small"
-                    type="text"
-                    onClick={() => setSelectedCategorySpecIds([])}
-                    disabled={!canEditMenu || selectedCategorySpecIds.length === 0}
-                  >
-                    清空
-                  </Button>
-                </div>
-              ) : null}
-              {!selectedCategoryId ? (
-                <Typography.Text type="secondary">请先选择所属分类，再配置菜单规格。</Typography.Text>
-              ) : categorySpecs.length === 0 ? (
-                <Space direction="vertical" size={8}>
-                  <Typography.Text type="secondary">该分类下还没有规格模板，请先到“分类规格”里维护。</Typography.Text>
-                  <Button type="link" style={{ paddingInline: 0 }} onClick={() => onOpenCategorySpecs?.(selectedCategoryId)}>
-                    前往分类规格
-                  </Button>
-                </Space>
-              ) : null}
-              {categorySpecsByType.length > 0 ? (
-                <div className="manage-spec-group-list">
-                  {categorySpecsByType.map((group) => {
-                    const groupIds = group.items.map((item) => item.id)
-                    const currentValues = selectedCategorySpecIds.filter((id) => groupIds.includes(id))
-                    return (
-                      <div key={group.specType} className="manage-spec-group-block">
-                        <div className="manage-spec-group-header">
-                          <div>
-                            <Typography.Title level={5} style={{ margin: 0 }}>
-                              {group.specType}
-                            </Typography.Title>
-                            <Typography.Text type="secondary">
-                              选择该菜品允许顾客看到的选项
-                            </Typography.Text>
-                          </div>
-                          <Tag color="blue">{group.items.length} 个选项</Tag>
-                        </div>
-                        <Checkbox.Group
-                          value={currentValues}
-                          onChange={(checkedValues) => {
-                            const nextValues = selectedCategorySpecIds
-                              .filter((id) => !groupIds.includes(id))
-                              .concat((checkedValues as string[]) ?? [])
-                            setSelectedCategorySpecIds(nextValues)
-                          }}
-                        >
-                          <div className="manage-spec-checkbox-grid">
-                            {group.items.map((item) => (
-                              <Checkbox key={item.id} value={item.id} className="manage-spec-checkbox">
-                                <Space wrap size={4}>
-                                  <span>{item.spec_value}</span>
-                                  <Tag color={item.price_delta ? 'red' : 'default'}>
-                                    ¥{Number(item.price_delta || 0).toFixed(2)}
-                                  </Tag>
-                                </Space>
-                              </Checkbox>
-                            ))}
-                          </div>
-                        </Checkbox.Group>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : null}
-            </Form.Item>
-            <Form.Item label="选择全局规格项" style={{ marginBottom: 16 }}>
-              {librarySpecsByType.length > 0 ? (
-                <div className="menu-spec-section-actions">
-                  <Button
-                    size="small"
-                    onClick={() => setSelectedLibrarySpecItemIds(allLibrarySpecItemIds)}
-                    disabled={!canEditMenu}
-                  >
-                    引入全部全局规格项
-                  </Button>
-                  <Button
-                    size="small"
-                    type="text"
-                    onClick={() => setSelectedLibrarySpecItemIds([])}
-                    disabled={!canEditMenu || selectedLibrarySpecItemIds.length === 0}
-                  >
-                    清空
-                  </Button>
-                </div>
-              ) : null}
-              {librarySpecsByType.length === 0 ? (
-                <Typography.Text type="secondary">基础规格库还没有可选项，请先到“基础规格库”维护。</Typography.Text>
-              ) : (
-                <div className="manage-spec-group-list">
-                  {librarySpecsByType.map((group) => {
-                    const groupIds = group.items.map((item) => item.id)
-                    const currentValues = selectedLibrarySpecItemIds.filter((id) => groupIds.includes(id))
-                    return (
-                      <div key={group.specType} className="manage-spec-group-block">
-                        <div className="manage-spec-group-header">
-                          <div>
-                            <Typography.Title level={5} style={{ margin: 0 }}>
-                              {group.specType}
-                            </Typography.Title>
-                            <Typography.Text type="secondary">勾选后会作为全局规格引用到当前菜品</Typography.Text>
-                          </div>
-                          <Tag color="cyan">{group.items.length} 个全局项</Tag>
-                        </div>
-                        <Checkbox.Group
-                          value={currentValues}
-                          onChange={(checkedValues) => {
-                            const nextValues = selectedLibrarySpecItemIds
-                              .filter((id) => !groupIds.includes(id))
-                              .concat((checkedValues as string[]) ?? [])
-                            setSelectedLibrarySpecItemIds(nextValues)
-                          }}
-                        >
-                          <div className="manage-spec-checkbox-grid">
-                            {group.items.map((item) => (
-                              <Checkbox key={item.id} value={item.id} className="manage-spec-checkbox">
-                                <Space wrap size={4}>
-                                  <span>{item.name}</span>
-                                  <Tag color={item.default_price ? 'red' : 'default'}>
-                                    ¥{Number(item.default_price || 0).toFixed(2)}
-                                  </Tag>
-                                </Space>
-                              </Checkbox>
-                            ))}
-                          </div>
-                        </Checkbox.Group>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </Form.Item>
-            <Form.Item label="新增规格并写入全局规格库" style={{ marginBottom: 0 }}>
-              <Typography.Text type="secondary" className="modal-note">
-                这里新增的规格组和规格项会自动进入基础规格库。保存后如需移出当前菜品，请在上方取消勾选对应全局规格项。
-              </Typography.Text>
-              <Form.List name="custom_spec_groups">
-                {(groupFields, { add: addGroup, remove: removeGroup }) => (
-                  <div className="inline-editor-list" style={{ marginTop: 12 }}>
-                    {groupFields.map(({ key, name, ...rest }) => (
-                      <div key={key} className="manage-spec-group-block">
-                        <div className="manage-spec-group-header" style={{ alignItems: 'flex-start' }}>
-                          <Form.Item
-                            {...rest}
-                            name={[name, 'spec_type']}
-                            label="规格组名称"
-                            rules={[{ required: true, message: '请输入规格组名称' }]}
-                            style={{ flex: 1, marginBottom: 12 }}
+          <div className="manage-form-card menu-edit-spec-card">
+            <div className="menu-edit-spec-card-head">
+              <span className="manage-form-card-title">规格配置</span>
+              <Space size={8} wrap className="menu-edit-spec-summary">
+                <Tag>
+                  分类模板 {selectedCategorySpecIds.length}/{categorySpecs.length || 0}
+                </Tag>
+                <Tag color="cyan">
+                  全局库 {selectedLibrarySpecItemIds.length}/{libraryItems.length || 0}
+                </Tag>
+                {customSpecGroupCount > 0 ? <Tag color="purple">自定义 {customSpecGroupCount} 组</Tag> : null}
+              </Space>
+            </div>
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+              三类来源可叠加：先勾选分类模板与全局项，再补充本菜品专用规格；保存时自动去重。
+            </Typography.Paragraph>
+            <div className="menu-edit-spec-scroll">
+              <Collapse
+                bordered
+                className="menu-edit-spec-collapse"
+                defaultActiveKey={['category', 'library', 'custom']}
+                items={[
+                  {
+                    key: 'category',
+                    label: (
+                      <Space wrap size={8}>
+                        <span>引用分类规格模板</span>
+                        <Badge count={selectedCategorySpecIds.length} color="#1677ff" overflowCount={999} showZero />
+                        {categorySpecs.length > 0 ? (
+                          <Typography.Text type="secondary">共 {categorySpecs.length} 个可选项</Typography.Text>
+                        ) : null}
+                      </Space>
+                    ),
+                    extra:
+                      selectedCategoryId && categorySpecs.length > 0 ? (
+                        <Space size={4} onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="small"
+                            onClick={() => setSelectedCategorySpecIds(allCategorySpecIds)}
+                            disabled={!canEditMenu}
                           >
-                            <Input placeholder="如：做法 / 配菜 / 甜度" />
-                          </Form.Item>
-                          <Button type="text" danger onClick={() => removeGroup(name)} disabled={!canEditMenu}>
-                            删除规格组
+                            全选
                           </Button>
+                          <Button
+                            size="small"
+                            type="text"
+                            onClick={() => setSelectedCategorySpecIds([])}
+                            disabled={!canEditMenu || selectedCategorySpecIds.length === 0}
+                          >
+                            清空
+                          </Button>
+                        </Space>
+                      ) : null,
+                    children: !selectedCategoryId ? (
+                      <Typography.Text type="secondary">请先选择所属分类。</Typography.Text>
+                    ) : categorySpecs.length === 0 ? (
+                      <Space direction="vertical" size={8}>
+                        <Typography.Text type="secondary">
+                          该分类下还没有规格模板，请先到「分类规格模板」页维护。
+                        </Typography.Text>
+                        <Button type="link" style={{ paddingInline: 0 }} onClick={() => onOpenCategorySpecs?.(selectedCategoryId)}>
+                          前往分类规格模板 →
+                        </Button>
+                      </Space>
+                    ) : (
+                      <div className="manage-spec-group-list">
+                        {categorySpecsByType.map((group) => {
+                          const groupIds = group.items.map((item) => item.id)
+                          const currentValues = selectedCategorySpecIds.filter((id) => groupIds.includes(id))
+                          return (
+                            <div key={group.specType} className="manage-spec-group-block">
+                              <div className="manage-spec-group-header">
+                                <div className="manage-spec-group-title-block">
+                                  <Typography.Title level={5} style={{ margin: 0 }}>
+                                    {group.specType}
+                                  </Typography.Title>
+                                  <Typography.Text type="secondary">顾客可选的规格项（加价以分类模板为准）</Typography.Text>
+                                </div>
+                                <Tag color="blue">{group.items.length} 项</Tag>
+                              </div>
+                              <Checkbox.Group
+                                value={currentValues}
+                                onChange={(checkedValues) => {
+                                  const nextValues = selectedCategorySpecIds
+                                    .filter((id) => !groupIds.includes(id))
+                                    .concat((checkedValues as string[]) ?? [])
+                                  setSelectedCategorySpecIds(nextValues)
+                                }}
+                              >
+                                <div className="manage-spec-checkbox-grid">
+                                  {group.items.map((item) => (
+                                    <Checkbox key={item.id} value={item.id} className="manage-spec-checkbox">
+                                      <div className="manage-spec-checkbox-label">
+                                        <span className="manage-spec-checkbox-name">{item.spec_value}</span>
+                                        <Tag className="manage-spec-checkbox-tag" color={item.price_delta ? 'red' : 'default'}>
+                                          +¥{Number(item.price_delta || 0).toFixed(2)}
+                                        </Tag>
+                                      </div>
+                                    </Checkbox>
+                                  ))}
+                                </div>
+                              </Checkbox.Group>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'library',
+                    label: (
+                      <Space wrap size={8}>
+                        <span>引用全局规格库</span>
+                        <Badge count={selectedLibrarySpecItemIds.length} color="#13c2c2" overflowCount={999} showZero />
+                        {libraryItems.length > 0 ? (
+                          <Typography.Text type="secondary">共 {libraryItems.length} 个规格项</Typography.Text>
+                        ) : null}
+                      </Space>
+                    ),
+                    extra:
+                      librarySpecsByType.length > 0 ? (
+                        <Space size={4} onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="small"
+                            onClick={() => setSelectedLibrarySpecItemIds(allLibrarySpecItemIds)}
+                            disabled={!canEditMenu}
+                          >
+                            全选
+                          </Button>
+                          <Button
+                            size="small"
+                            type="text"
+                            onClick={() => setSelectedLibrarySpecItemIds([])}
+                            disabled={!canEditMenu || selectedLibrarySpecItemIds.length === 0}
+                          >
+                            清空
+                          </Button>
+                        </Space>
+                      ) : null,
+                    children:
+                      librarySpecsByType.length === 0 ? (
+                        <Typography.Text type="secondary">
+                          基础规格库暂无可选项，请到顶部「基础规格库」页维护规格组与规格项。
+                        </Typography.Text>
+                      ) : (
+                        <div className="manage-spec-group-list">
+                          {librarySpecsByType.map((group) => {
+                            const groupIds = group.items.map((item) => item.id)
+                            const currentValues = selectedLibrarySpecItemIds.filter((id) => groupIds.includes(id))
+                            return (
+                              <div key={group.specType} className="manage-spec-group-block">
+                                <div className="manage-spec-group-header">
+                                  <div className="manage-spec-group-title-block">
+                                    <Typography.Title level={5} style={{ margin: 0 }}>
+                                      {group.specType}
+                                    </Typography.Title>
+                                    <Typography.Text type="secondary">来自基础规格库，保存后写入本菜品</Typography.Text>
+                                  </div>
+                                  <Tag color="cyan">{group.items.length} 项</Tag>
+                                </div>
+                                <Checkbox.Group
+                                  value={currentValues}
+                                  onChange={(checkedValues) => {
+                                    const nextValues = selectedLibrarySpecItemIds
+                                      .filter((id) => !groupIds.includes(id))
+                                      .concat((checkedValues as string[]) ?? [])
+                                    setSelectedLibrarySpecItemIds(nextValues)
+                                  }}
+                                >
+                                  <div className="manage-spec-checkbox-grid">
+                                    {group.items.map((item) => (
+                                      <Checkbox key={item.id} value={item.id} className="manage-spec-checkbox">
+                                        <div className="manage-spec-checkbox-label">
+                                          <span className="manage-spec-checkbox-name">{item.name}</span>
+                                          <Tag className="manage-spec-checkbox-tag" color={item.default_price ? 'red' : 'default'}>
+                                            +¥{Number(item.default_price || 0).toFixed(2)}
+                                          </Tag>
+                                        </div>
+                                      </Checkbox>
+                                    ))}
+                                  </div>
+                                </Checkbox.Group>
+                              </div>
+                            )
+                          })}
                         </div>
-                        <Form.List name={[name, 'items']}>
-                          {(itemFields, { add: addItem, remove: removeItem }) => (
-                            <div className="inline-editor-list">
-                              {itemFields.map(({ key: itemKey, name: itemName, ...itemRest }) => (
-                                <div key={itemKey} className="inline-editor-row">
-                                  <Form.Item
-                                    {...itemRest}
-                                    name={[itemName, 'spec_value']}
-                                    label="规格项名称"
-                                    rules={[{ required: true, message: '请输入规格项名称' }]}
-                                  >
-                                    <Input placeholder="如：少冰 / 加蛋 / 大杯" />
-                                  </Form.Item>
-                                  <Form.Item {...itemRest} name={[itemName, 'price_delta']} label="加价">
-                                    <Input type="number" step={0.01} min={0} placeholder="0.00" />
-                                  </Form.Item>
-                                  <Button type="text" danger onClick={() => removeItem(itemName)} disabled={!canEditMenu}>
-                                    删除
-                                  </Button>
+                      ),
+                  },
+                  {
+                    key: 'custom',
+                    label: (
+                      <Space wrap size={8}>
+                        <span>本菜品自定义规格</span>
+                        {customSpecGroupCount > 0 ? (
+                          <Typography.Text type="secondary">{customSpecGroupCount} 组</Typography.Text>
+                        ) : (
+                          <Typography.Text type="secondary">可选</Typography.Text>
+                        )}
+                      </Space>
+                    ),
+                    children: (
+                      <>
+                        <Typography.Paragraph type="secondary" className="modal-note" style={{ marginBottom: 12 }}>
+                          新增的规格组会同步写入基础规格库。若与全局项重复，保存时会自动去重。
+                        </Typography.Paragraph>
+                        <Form.List name="custom_spec_groups">
+                          {(groupFields, { add: addGroup, remove: removeGroup }) => (
+                            <div className="inline-editor-list menu-custom-spec-groups">
+                              {groupFields.map(({ key, name, ...rest }) => (
+                                <div key={key} className="manage-spec-group-block menu-custom-spec-group-card">
+                                  <div className="menu-custom-spec-group-head">
+                                    <Form.Item
+                                      {...rest}
+                                      name={[name, 'spec_type']}
+                                      label="规格组名称"
+                                      rules={[{ required: true, message: '请输入规格组名称' }]}
+                                      className="menu-custom-spec-type-item"
+                                    >
+                                      <Input placeholder="如：做法、甜度、加料" />
+                                    </Form.Item>
+                                    <Button type="text" danger onClick={() => removeGroup(name)} disabled={!canEditMenu}>
+                                      删除组
+                                    </Button>
+                                  </div>
+                                  <Form.List name={[name, 'items']}>
+                                    {(itemFields, { add: addItem, remove: removeItem }) => (
+                                      <div className="inline-editor-list menu-custom-spec-items">
+                                        {itemFields.map(({ key: itemKey, name: itemName, ...itemRest }) => (
+                                          <div key={itemKey} className="inline-editor-row menu-custom-spec-item-row">
+                                            <Form.Item
+                                              {...itemRest}
+                                              name={[itemName, 'spec_value']}
+                                              label="规格项"
+                                              rules={[{ required: true, message: '请输入规格项' }]}
+                                            >
+                                              <Input placeholder="如：少冰、加蛋" />
+                                            </Form.Item>
+                                            <Form.Item {...itemRest} name={[itemName, 'price_delta']} label="加价（元）">
+                                              <Input type="number" step={0.01} min={0} placeholder="0.00" />
+                                            </Form.Item>
+                                            <Button type="text" danger onClick={() => removeItem(itemName)} disabled={!canEditMenu}>
+                                              删除
+                                            </Button>
+                                          </div>
+                                        ))}
+                                        <Button
+                                          type="dashed"
+                                          onClick={() => addItem({ spec_value: '', price_delta: 0 })}
+                                          block
+                                          disabled={!canEditMenu}
+                                        >
+                                          + 添加规格项
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </Form.List>
                                 </div>
                               ))}
-                              <Button type="dashed" onClick={() => addItem({ spec_value: '', price_delta: 0 })} block disabled={!canEditMenu}>
-                                + 添加规格项
+                              <Button
+                                type="dashed"
+                                onClick={() => addGroup({ spec_type: '', items: [{ spec_value: '', price_delta: 0 }] })}
+                                block
+                                disabled={!canEditMenu}
+                              >
+                                + 添加自定义规格组
                               </Button>
                             </div>
                           )}
                         </Form.List>
-                      </div>
-                    ))}
-                    <Button
-                      type="dashed"
-                      onClick={() => addGroup({ spec_type: '', items: [{ spec_value: '', price_delta: 0 }] })}
-                      block
-                      disabled={!canEditMenu}
-                    >
-                      + 添加自定义规格组
-                    </Button>
-                  </div>
-                )}
-              </Form.List>
-            </Form.Item>
+                      </>
+                    ),
+                  },
+                ]}
+              />
+            </div>
           </div>
         </Form>
       </Modal>

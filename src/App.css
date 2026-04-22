@@ -3260,18 +3260,132 @@
 
 .manage-spec-checkbox-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 10px;
 }
 
 .manage-spec-checkbox {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   padding: 10px 12px;
   border: 1px solid #e5eaf3;
   border-radius: 12px;
   background: #fff;
   margin-inline-start: 0 !important;
+}
+
+.manage-spec-checkbox .ant-checkbox {
+  top: 0.2em;
+}
+
+.manage-spec-checkbox-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+  line-height: 1.45;
+}
+
+.manage-spec-checkbox-name {
+  flex: 1 1 120px;
+  min-width: 0;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.manage-spec-checkbox-tag {
+  flex-shrink: 0;
+  margin-inline-end: 0 !important;
+}
+
+.manage-spec-group-title-block {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.menu-edit-modal.manage-modal .ant-modal-body {
+  max-height: min(90vh, 920px);
+  overflow-y: auto;
+}
+
+.menu-edit-spec-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 4px;
+}
+
+.menu-edit-spec-summary .ant-tag {
+  margin-inline-end: 0;
+}
+
+.menu-edit-spec-scroll {
+  max-height: min(52vh, 480px);
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-right: -4px;
+}
+
+.menu-edit-spec-collapse.ant-collapse {
+  background: transparent;
+}
+
+.menu-edit-spec-collapse .ant-collapse-item {
+  border-radius: 14px !important;
+  margin-bottom: 10px;
+  overflow: hidden;
+  border: 1px solid #e5eaf3 !important;
+}
+
+.menu-edit-spec-collapse .ant-collapse-header {
+  align-items: center !important;
+  font-weight: 600;
+}
+
+.menu-custom-spec-group-card .menu-custom-spec-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.menu-custom-spec-group-card .menu-custom-spec-type-item {
+  flex: 1 1 220px;
+  min-width: 0;
+  margin-bottom: 0 !important;
+}
+
+.menu-custom-spec-item-row {
+  grid-template-columns: minmax(0, 1.4fr) minmax(100px, 0.55fr) auto;
+}
+
+.menu-table-specs-cell {
+  display: grid;
+  gap: 6px;
+  max-width: 280px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.menu-table-specs-line {
+  display: grid;
+  gap: 2px;
+}
+
+.menu-table-specs-type {
+  font-size: 12px;
+  color: #475467;
+}
+
+.menu-table-specs-values {
+  color: #101828;
+  word-break: break-word;
+  white-space: normal;
 }
 
 /* 嵌套子 Tab：Segmented 胶囊风格，与外层主 Tab 形成清晰层级 */

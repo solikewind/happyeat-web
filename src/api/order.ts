@@ -12,7 +12,11 @@ export interface CreateOrderItem {
 /** 统一为前端使用的小写状态，避免各处再做大写兼容 */
 function normalizeOrder(order: Order): Order {
   const s = normOrderStatus(order.status)
-  return { ...order, status: s || order.status }
+  return {
+    ...order,
+    status: s || order.status,
+    actual_amount: order.actual_amount ?? 0,
+  }
 }
 
 const normalizeOrderList = (data: { orders?: Order[]; total?: number } | undefined) => ({
@@ -46,6 +50,8 @@ export async function createOrder(body: {
   table_id?: string
   items: CreateOrderItem[]
   total_amount: number
+  /** 实收（分）；不传时由调用方决定是否省略（后端默认 0） */
+  actual_amount?: number
   remark?: string
 }) {
   const { data } = await api.post<{ order: Order }>('/central/v1/orders', body)

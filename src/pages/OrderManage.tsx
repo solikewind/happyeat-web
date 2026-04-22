@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  Alert,
   Button,
   Card,
   Descriptions,
@@ -172,11 +173,13 @@ export default function OrderManage() {
     })
 
     try {
+      const total = Math.round(totalAmount * 100) / 100
       await createOrder({
         order_type: values.order_type,
         table_id: values.order_type === 'dine_in' ? values.table_id : undefined,
         items: bodyItems,
-        total_amount: Math.round(totalAmount * 100) / 100,
+        total_amount: total,
+        actual_amount: total,
         remark: values.remark || undefined,
       })
       message.success('订单创建成功')
@@ -237,7 +240,7 @@ export default function OrderManage() {
           loading={loading}
           dataSource={orders}
           tableLayout="fixed"
-          scroll={{ x: 1380 }}
+          scroll={{ x: 1500 }}
           locale={{ emptyText: <Empty className="table-empty-state" description="暂无订单记录" /> }}
           columns={[
             { title: 'ID', dataIndex: 'id', width: 220, className: 'table-col-id' },
@@ -264,6 +267,24 @@ export default function OrderManage() {
               width: 112,
               className: 'table-col-amount',
               render: (value: number) => <Tag color="red">¥{value?.toFixed(2) ?? '0.00'}</Tag>,
+            },
+            {
+              title: '实收',
+              dataIndex: 'actual_amount',
+              width: 112,
+              className: 'table-col-amount',
+              render: (_: number | undefined, record: Order) => {
+                const a = record.actual_amount ?? 0
+                const t = record.total_amount ?? 0
+                if (a > 0 || (a === 0 && t === 0)) {
+                  return <Tag color="green">¥{a.toFixed(2)}</Tag>
+                }
+                return (
+                  <Tag color="default" title="库中实收为 0，多为升级前订单或未传实收">
+                    ¥0.00
+                  </Tag>
+                )
+              },
             },
             {
               title: '桌台',
@@ -413,6 +434,16 @@ export default function OrderManage() {
       >
         {detailOrder ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            {(detailOrder.actual_amount ?? 0) === 0 &&
+            (detailOrder.total_amount ?? 0) > 0 &&
+            ['created', 'paid', 'preparing'].includes(normOrderStatus(detailOrder.status) || '') ? (
+              <Alert
+                type="info"
+                showIcon
+                message="实收金额为 0"
+                description="多为数据库升级前的历史订单，或当时下单未带实收字段。新单请在「点餐台 → 订单结算」填写「实收金额」后再提交；必要时可在数据库中把旧单的 actual_amount 更新为与 total_amount 一致。"
+              />
+            ) : null}
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="订单 ID" span={2}>
                 <Typography.Text code copyable className="order-detail-id">
@@ -424,12 +455,30 @@ export default function OrderManage() {
               <Descriptions.Item label="状态">
                 <Tag color={orderStatusTagColor(detailOrder.status)}>{orderStatusLabel(detailOrder.status)}</Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="订单金额">¥{detailOrder.total_amount?.toFixed(2) ?? '0.00'}</Descriptions.Item>
+              <Descriptions.Item label="创建时间">
+                {detailOrder.created_at ? new Date(detailOrder.created_at).toLocaleString('zh-CN') : '-'}
+              </Descriptions.Item>
               <Descriptions.Item label="桌台">
                 {detailOrder.table_code ? `${detailOrder.table_category ? `${detailOrder.table_category}-` : ''}${detailOrder.table_code}` : '-'}
               </Descriptions.Item>
-              <Descriptions.Item label="创建时间">
-                {detailOrder.created_at ? new Date(detailOrder.created_at).toLocaleString('zh-CN') : '-'}
+              <Descriptions.Item label="金额" span={2}>
+                <Space direction="vertical" size={6}>
+                  <div>
+                    <Typography.Text type="secondary">应收（订单金额） </Typography.Text>
+                    <Typography.Text strong>¥{detailOrder.total_amount?.toFixed(2) ?? '0.00'}</Typography.Text>
+                  </div>
+                  <div>
+                    <Typography.Text type="secondary">实收 </Typography.Text>
+                    <Typography.Text strong style={{ fontSize: 16 }}>
+                      ¥{(detailOrder.actual_amount ?? 0).toFixed(2)}
+                    </Typography.Text>
+                    {(detailOrder.actual_amount ?? 0) === 0 && (detailOrder.total_amount ?? 0) > 0 ? (
+                      <Tag color="default" style={{ marginLeft: 8 }}>
+                        未写入
+                      </Tag>
+                    ) : null}
+                  </div>
+                </Space>
               </Descriptions.Item>
               <Descriptions.Item label="备注" span={2}>
                 {detailOrder.remark || '-'}

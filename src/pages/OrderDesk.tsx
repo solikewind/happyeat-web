@@ -41,6 +41,8 @@ export default function OrderDesk() {
   const [cardSelections, setCardSelections] = useState<Record<string, { quantity: number; selectedSpecs: MenuSpec[] }>>({})
   /** 当前分类下列表内的菜品名称过滤（前端过滤，与已加载数据联动） */
   const [menuSearchKeyword, setMenuSearchKeyword] = useState('')
+  /** 实收（元），默认随购物车合计变化；可改价/抹零时在此修改 */
+  const [actualAmountYuan, setActualAmountYuan] = useState<number>(0)
 
   const { isSupported: sttSupported, listening, transcript, finalTranscript, start: startSTT, stop: stopSTT } = useSTT({
     lang: 'zh-CN',
@@ -48,6 +50,12 @@ export default function OrderDesk() {
     interimResults: true,
   })
   const { speak, isSupported: ttsSupported } = useTTS({ lang: 'zh-CN', rate: 1.2 })
+
+  const cartTotalRounded = useMemo(() => Math.round(cartTotal * 100) / 100, [cartTotal])
+
+  useEffect(() => {
+    setActualAmountYuan(cartTotalRounded)
+  }, [cartTotalRounded])
 
   const loadCategories = useCallback(async () => {
     try {
@@ -289,6 +297,13 @@ export default function OrderDesk() {
       return
     }
 
+    const total = cartTotalRounded
+    const actual = Math.round(actualAmountYuan * 100) / 100
+    if (actual < 0) {
+      message.warning('实收金额不能为负')
+      return
+    }
+
     setSubmitting(true)
     try {
       await createOrder({
@@ -300,7 +315,8 @@ export default function OrderDesk() {
           unit_price: i.price,
           spec_info: i.specInfo || undefined,
         })),
-        total_amount: Math.round(cartTotal * 100) / 100,
+        total_amount: total,
+        actual_amount: actual,
       })
       message.success('下单成功')
       clearCart()
@@ -579,8 +595,23 @@ export default function OrderDesk() {
 
             <Space size="large" wrap>
               <Statistic title="菜品数量" value={cartItemCount} suffix="份" />
-              <Statistic title="订单金额" value={cartTotal} precision={2} prefix="¥" />
+              <Statistic title="订单金额（应收）" value={cartTotal} precision={2} prefix="¥" />
             </Space>
+
+            <Form.Item label="实收金额（元）" style={{ marginBottom: 0 }}>
+              <InputNumber
+                min={0}
+                precision={2}
+                step={1}
+                value={actualAmountYuan}
+                onChange={(v) => setActualAmountYuan(typeof v === 'number' ? v : 0)}
+                style={{ width: '100%', maxWidth: 280 }}
+                prefix="¥"
+              />
+              <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
+                与「订单金额」可不同（例如抹零）；默认等于购物车合计。
+              </Typography.Paragraph>
+            </Form.Item>
 
             <Form layout="vertical">
               <Form.Item label="就餐方式" style={{ marginBottom: 12 }}>

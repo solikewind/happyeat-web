@@ -108,6 +108,8 @@ export interface Order {
   /** 经 `api/order` 列表/详情/创建返回后为小写（created / paid / …），与展示用键一致 */
   status: string
   total_amount: number
+  /** 实收金额（与后端 `actual_amount` 一致，单位同 total_amount） */
+  actual_amount?: number
   table_id?: string
   table_code?: string // 桌号（堂食时显示，外带为空）
   table_category?: string // 餐桌类别（如大厅、包间）
