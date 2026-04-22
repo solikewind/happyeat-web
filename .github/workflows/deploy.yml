@@ -16,10 +16,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 不显式写 version，与 package.json 的 packageManager 一致，避免 action 报「多处指定版本」
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
