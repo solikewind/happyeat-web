@@ -96,6 +96,13 @@ const formatDateTime = (value?: string | number): string => {
   return Number.isNaN(timestamp) ? value : new Date(timestamp).toLocaleString('zh-CN')
 }
 
+// 统一金额精度到 2 位小数，避免 number 浮点误差导致 68 -> 67.99 这类问题。
+const normalizeMoneyYuan = (value: unknown): number => {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) return 0
+  return Math.round((n + Number.EPSILON) * 100) / 100
+}
+
 type CategorySpecSourceMode = 'library' | 'manual'
 
 type CategorySpecImportPreview = {
@@ -1425,7 +1432,7 @@ function buildMenuSpecsFromForm(values: {
       category_spec_id: String(categorySpecId),
       spec_type: matched?.spec_type,
       spec_value: matched?.spec_value,
-      price_delta: Number(matched?.price_delta ?? 0),
+      price_delta: normalizeMoneyYuan(matched?.price_delta ?? 0),
       sort,
     })
     sort += 1
@@ -1442,7 +1449,7 @@ function buildMenuSpecsFromForm(values: {
       spec_item_id: String(specItemId),
       spec_type: group?.name,
       spec_value: matched?.name,
-      price_delta: Number(matched?.default_price ?? 0),
+      price_delta: normalizeMoneyYuan(matched?.default_price ?? 0),
       sort,
     })
     sort += 1
@@ -1461,7 +1468,7 @@ function buildMenuSpecsFromForm(values: {
         source: 'custom',
         spec_type: specType,
         spec_value: specValue,
-        price_delta: Number(item.price_delta ?? 0),
+        price_delta: normalizeMoneyYuan(item.price_delta ?? 0),
         sort,
       })
       sort += 1
@@ -1717,10 +1724,11 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
     )
 
     try {
+      const normalizedPrice = normalizeMoneyYuan(values.price)
       if (editingId == null) {
         await createMenu({
           name: values.name,
-          price: Number(values.price),
+          price: normalizedPrice,
           category_id: String(values.category_id),
           description: values.description || undefined,
           image: values.image || undefined,
@@ -1730,7 +1738,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
       } else {
         await updateMenu(editingId, {
           name: values.name,
-          price: Number(values.price),
+          price: normalizedPrice,
           category_id: String(values.category_id),
           description: values.description || undefined,
           image: values.image || undefined,

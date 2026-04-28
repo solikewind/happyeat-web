@@ -8,6 +8,27 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return
+            const normalized = id.replace(/\\/g, '/')
+            if (normalized.includes('/react/') || normalized.includes('/react-dom/') || normalized.includes('/scheduler/')) {
+              return 'vendor-react'
+            }
+            if (normalized.includes('/react-router/') || normalized.includes('/react-router-dom/')) {
+              return 'vendor-router'
+            }
+            if (normalized.includes('/axios/')) {
+              return 'vendor-axios'
+            }
+            return
+          },
+          chunkFileNames: 'assets/[name]-[hash].js',
+        },
+      },
+    },
     server: {
       proxy: {
         '/api': {
