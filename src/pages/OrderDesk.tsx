@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Card, Empty, Form, Input, InputNumber, Popconfirm, Popover, Radio, Space, Statistic, Tabs, Tag, Typography, message } from 'antd'
 import { PlusOutlined, MinusOutlined, AudioOutlined, SearchOutlined, SoundOutlined } from '@ant-design/icons'
 import type { Menu, MenuCategory, MenuSpec, Table as TableType } from '../api/types'
-import { listMenuCategories, listMenus } from '../api/menu'
+import { getObjectUrl, listMenuCategories, listMenus } from '../api/menu'
 import { listTables } from '../api/table'
 import { createOrder } from '../api/order'
 import { useSTT } from '../hooks/useSTT'
@@ -43,6 +43,20 @@ export default function OrderDesk() {
   const [menuSearchKeyword, setMenuSearchKeyword] = useState('')
   /** 实收（元），默认随购物车合计变化；可改价/抹零时在此修改 */
   const [actualAmountYuan, setActualAmountYuan] = useState<number>(0)
+  const [objectUrlOverrides, setObjectUrlOverrides] = useState<Record<string, string>>({})
+
+  const refreshObjectUrl = useCallback(async (objectId?: string) => {
+    const id = objectId?.trim()
+    if (!id) return undefined
+    try {
+      const data = await getObjectUrl(id)
+      if (!data?.url) return undefined
+      setObjectUrlOverrides((prev) => ({ ...prev, [id]: data.url }))
+      return data.url
+    } catch {
+      return undefined
+    }
+  }, [])
 
   const { isSupported: sttSupported, listening, transcript, finalTranscript, start: startSTT, stop: stopSTT } = useSTT({
     lang: 'zh-CN',
@@ -169,7 +183,10 @@ export default function OrderDesk() {
           i.menuId === menu.id && (i.specInfo ?? '') === (specInfo ?? '') ? { ...i, quantity: i.quantity + finalQuantity } : i
         )
       }
-      return [...prev, { menuId: menu.id, name: menu.name, price, quantity: finalQuantity, specInfo, image: menu.image }]
+      return [
+        ...prev,
+        { menuId: menu.id, name: menu.name, price, quantity: finalQuantity, specInfo, image: menu.image, objectId: menu.object_id },
+      ]
     })
 
     if (ttsSupported) {
@@ -240,7 +257,7 @@ export default function OrderDesk() {
               const current = next[existIndex]
               next[existIndex] = { ...current, quantity: current.quantity + quantity }
             } else {
-              next.push({ menuId: menu.id, name: menu.name, price, quantity, specInfo, image: menu.image })
+              next.push({ menuId: menu.id, name: menu.name, price, quantity, specInfo, image: menu.image, objectId: menu.object_id })
             }
           })
           return next
@@ -422,9 +439,20 @@ export default function OrderDesk() {
                       {menu.image ? (
                         <img
                           alt={menu.name}
-                          src={menu.image}
-                          onError={(e) => {
-                            ;(e.target as HTMLImageElement).style.display = 'none'
+                          src={menu.object_id && objectUrlOverrides[menu.object_id] ? objectUrlOverrides[menu.object_id] : menu.image}
+                          onError={async (e) => {
+                            const target = e.target as HTMLImageElement
+                            if (target.dataset.refreshed === '1') {
+                              target.style.display = 'none'
+                              return
+                            }
+                            target.dataset.refreshed = '1'
+                            const next = await refreshObjectUrl(menu.object_id)
+                            if (next) {
+                              target.src = next
+                              return
+                            }
+                            target.style.display = 'none'
                           }}
                         />
                       ) : (
@@ -537,10 +565,21 @@ export default function OrderDesk() {
                     <div className="order-desk-cart-thumb">
                       {item.image ? (
                         <img
-                          src={item.image}
+                          src={item.objectId && objectUrlOverrides[item.objectId] ? objectUrlOverrides[item.objectId] : item.image}
                           alt={item.name}
-                          onError={(e) => {
-                            ;(e.target as HTMLImageElement).style.display = 'none'
+                          onError={async (e) => {
+                            const target = e.target as HTMLImageElement
+                            if (target.dataset.refreshed === '1') {
+                              target.style.display = 'none'
+                              return
+                            }
+                            target.dataset.refreshed = '1'
+                            const next = await refreshObjectUrl(item.objectId)
+                            if (next) {
+                              target.src = next
+                              return
+                            }
+                            target.style.display = 'none'
                           }}
                         />
                       ) : (

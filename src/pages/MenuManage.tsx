@@ -21,6 +21,7 @@ import {
   Tag,
   Tooltip,
   Typography,
+  Upload,
   message,
 } from 'antd'
 import {
@@ -34,7 +35,15 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { DeleteOutlined, EditOutlined, FundProjectionScreenOutlined, HolderOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
+import {
+  DeleteOutlined,
+  EditOutlined,
+  FundProjectionScreenOutlined,
+  HolderOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  UploadOutlined,
+} from '@ant-design/icons'
 import type { CategorySpec, Menu, MenuCategory, MenuSpec, SpecGroup, SpecItem } from '../api/types'
 import { useAuth } from '../contexts/AuthContext'
 import { appPath } from '../utils/appPath'
@@ -44,10 +53,12 @@ import {
   deleteMenu,
   deleteMenuCategory,
   getMenu,
+  getObjectUrl,
   listMenuCategories,
   listMenus,
   updateMenu,
   updateMenuCategory,
+  uploadObject,
 } from '../api/menu'
 import {
   createCategorySpec,
@@ -435,12 +446,12 @@ function CategorySpecTab({ preferredCategoryId }: { preferredCategoryId?: string
     if (oldIndex < 0 || newIndex < 0) return
 
     const reordered = arrayMove(sortedSpecTemplateCategories, oldIndex, newIndex)
-    const withSort = reordered.map((c, index) => ({ ...c, sort: index }))
+    const withSort = reordered.map((c: MenuCategory, index: number) => ({ ...c, sort: index }))
     const snapshot = [...categories]
     setCategories(withSort)
     try {
       await Promise.all(
-        withSort.map((c) =>
+        withSort.map((c: MenuCategory) =>
           updateMenuCategory(c.id, {
             name: c.name,
             description: c.description ?? '',
@@ -1496,14 +1507,31 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form] = Form.useForm()
   const selectedCategoryId = Form.useWatch('category_id', form)
+  const coverImageUrlWatch = Form.useWatch('image', form) as string | undefined
   const [selectedCategorySpecIds, setSelectedCategorySpecIds] = useState<string[]>([])
   const [selectedLibrarySpecItemIds, setSelectedLibrarySpecItemIds] = useState<string[]>([])
 
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [categoryForm] = Form.useForm()
+  const [coverUploading, setCoverUploading] = useState(false)
+  const [objectUrlOverrides, setObjectUrlOverrides] = useState<Record<string, string>>({})
   /** 新建/编辑弹窗打开时，保证 afterOpenChange 能拿到本次点击的分类（避免 state 尚未提交） */
   const categoryEditSnapshotRef = useRef<MenuCategory | null>(null)
+
+  const refreshObjectUrl = useCallback(async (objectId?: string) => {
+    const id = objectId?.trim()
+    if (!id) return undefined
+    try {
+      const data = await getObjectUrl(id)
+      const next = normalizeImageUrl(data.url)
+      if (!next) return undefined
+      setObjectUrlOverrides((prev) => ({ ...prev, [id]: next }))
+      return next
+    } catch {
+      return undefined
+    }
+  }, [])
 
   const loadCategories = useCallback(async () => {
     const res = await listMenuCategories({ current: 1, pageSize: 200 })
@@ -1699,6 +1727,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
         category_id: menu.category_id,
         description: menu.description ?? '',
         image: menu.image ?? '',
+        cover_object_id: menu.object_id ?? undefined,
         custom_spec_groups: groupCustomMenuSpecs(menu.specs),
       })
       setModalOpen(true)
@@ -1725,13 +1754,22 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
 
     try {
       const normalizedPrice = normalizeMoneyYuan(values.price)
+      const coverObjectIdRaw = values.cover_object_id as string | number | undefined
+      const objectId =
+        coverObjectIdRaw === undefined || coverObjectIdRaw === null || String(coverObjectIdRaw).trim() === ''
+          ? undefined
+          : String(coverObjectIdRaw).trim()
+      const imageValue = values.image as string | undefined
+      // 私有桶场景下，image 可能是带签名的临时 URL。提交 object_id 时让后端按对象主键回填标准 URL。
+      const imageForSubmit = objectId ? undefined : imageValue || undefined
       if (editingId == null) {
         await createMenu({
           name: values.name,
           price: normalizedPrice,
           category_id: String(values.category_id),
           description: values.description || undefined,
-          image: values.image || undefined,
+          object_id: objectId,
+          image: imageForSubmit,
           specs: specs.length ? specs : undefined,
         })
         message.success('创建成功')
@@ -1741,7 +1779,8 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
           price: normalizedPrice,
           category_id: String(values.category_id),
           description: values.description || undefined,
-          image: values.image || undefined,
+          object_id: objectId,
+          image: imageForSubmit,
           specs: specs.length ? specs : undefined,
         })
         message.success('更新成功')
@@ -1854,12 +1893,12 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
     if (oldIndex < 0 || newIndex < 0) return
 
     const reordered = arrayMove(sortedCategories, oldIndex, newIndex)
-    const withSort = reordered.map((c, index) => ({ ...c, sort: index }))
+    const withSort = reordered.map((c: MenuCategory, index: number) => ({ ...c, sort: index }))
     const snapshot = [...categories]
     setCategories(withSort)
     try {
       await Promise.all(
-        withSort.map((c) =>
+        withSort.map((c: MenuCategory) =>
           updateMenuCategory(c.id, {
             name: c.name,
             description: c.description ?? '',
@@ -1996,8 +2035,9 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
               title: '图片',
               dataIndex: 'image',
               width: 80,
-              render: (url: string | undefined) => {
-                const normalized = normalizeImageUrl(url)
+              render: (url: string | undefined, record: Menu) => {
+                const objectId = record.object_id?.trim()
+                const normalized = objectId && objectUrlOverrides[objectId] ? objectUrlOverrides[objectId] : normalizeImageUrl(url)
                 return normalized ? (
                   <div className="table-thumb">
                     <Image
@@ -2008,8 +2048,19 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
                       style={{ objectFit: 'cover' }}
                       fallback={MENU_IMAGE_FALLBACK}
                       preview={{ mask: '预览' }}
-                      onError={(event) => {
+                      onError={async (event) => {
                         const target = event.target as HTMLImageElement
+                        if (target.dataset.refreshed === '1') {
+                          target.onerror = null
+                          target.src = MENU_IMAGE_FALLBACK
+                          return
+                        }
+                        target.dataset.refreshed = '1'
+                        const next = await refreshObjectUrl(objectId)
+                        if (next) {
+                          target.src = next
+                          return
+                        }
                         target.onerror = null
                         target.src = MENU_IMAGE_FALLBACK
                       }}
@@ -2222,8 +2273,87 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
                   options={categories.map((item) => ({ label: item.name, value: item.id }))}
                 />
               </Form.Item>
-              <Form.Item name="image" label="图片 URL">
-                <Input placeholder="选填" />
+              <Form.Item
+                label="封面图"
+                extra="仅支持上传图片，系统会自动保存封面。"
+              >
+                <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                  <Space wrap align="start" size={12}>
+                    <Upload
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      showUploadList={false}
+                      disabled={!canEditMenu}
+                      beforeUpload={async (file) => {
+                        const maxBytes = 10 * 1024 * 1024
+                        if (file.size > maxBytes) {
+                          message.error('图片不能超过 10MB')
+                          return false
+                        }
+                        setCoverUploading(true)
+                        try {
+                          const { object } = await uploadObject(file)
+                          form.setFieldsValue({
+                            image: object.url,
+                            cover_object_id: object.id,
+                          })
+                          message.success('图片上传成功')
+                        } catch (error) {
+                          message.error(`上传失败${extractErrorMessage(error) ? `：${extractErrorMessage(error)}` : ''}`)
+                        } finally {
+                          setCoverUploading(false)
+                        }
+                        return false
+                      }}
+                    >
+                      <Button icon={<UploadOutlined />} loading={coverUploading} disabled={!canEditMenu}>
+                        上传图片
+                      </Button>
+                    </Upload>
+                    {coverImageUrlWatch ? (
+                      <Button
+                        onClick={() => {
+                          form.setFieldsValue({
+                            image: undefined,
+                            cover_object_id: undefined,
+                          })
+                        }}
+                        disabled={!canEditMenu}
+                      >
+                        移除封面
+                      </Button>
+                    ) : null}
+                    {normalizeImageUrl(coverImageUrlWatch?.trim()) ? (
+                      <div className="table-thumb menu-cover-preview-thumb">
+                        <Image
+                          src={normalizeImageUrl(coverImageUrlWatch?.trim())!}
+                          alt="封面预览"
+                          width={72}
+                          height={72}
+                          style={{ objectFit: 'cover' }}
+                          fallback={MENU_IMAGE_FALLBACK}
+                          preview={{ mask: '预览' }}
+                          onError={async (event) => {
+                            const target = event.target as HTMLImageElement
+                            if (target.dataset.refreshed === '1') return
+                            target.dataset.refreshed = '1'
+                            const objectIdRaw = form.getFieldValue('cover_object_id')
+                            const objectId = objectIdRaw == null ? undefined : String(objectIdRaw)
+                            const next = await refreshObjectUrl(objectId)
+                            if (next) {
+                              form.setFieldValue('image', next)
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                  </Space>
+                  <Form.Item name="cover_object_id" hidden>
+                    <Input type="hidden" />
+                  </Form.Item>
+                  <Form.Item name="image" hidden>
+                    <Input type="hidden" />
+                  </Form.Item>
+                </Space>
               </Form.Item>
             </div>
             <Form.Item name="description" label="描述" style={{ marginBottom: 0 }}>

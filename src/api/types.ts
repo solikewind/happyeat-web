@@ -39,8 +39,24 @@ export interface Menu {
   price: number
   category_id: string
   description?: string
+  /** 封面图对象存储记录 ID（与 image URL 对应，上传接口返回） */
+  object_id?: string
   image?: string
   specs?: MenuSpec[]
+  created_at: string
+  updated_at: string
+}
+
+/** 对象存储中的一条记录（与后端 Object 一致） */
+export interface StoredObject {
+  id: string
+  name: string
+  key: string
+  url: string
+  content_type?: string
+  suffix?: string
+  size: number
+  hash: string
   created_at: string
   updated_at: string
 }

@@ -7,6 +7,7 @@ export interface CartItem {
   quantity: number
   specInfo?: string
   image?: string
+  objectId?: string
 }
 
 interface OrderCartContextValue {
