@@ -16,9 +16,9 @@ import {
   Typography,
   message,
 } from 'antd'
-import { EyeOutlined, PlusOutlined } from '@ant-design/icons'
+import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
 import type { Order, Menu, Table as TTable } from '../api/types'
-import { createOrder, getOrder, listOrders, updateOrderStatus } from '../api/order'
+import { createOrder, getOrder, listOrders, updateOrder, updateOrderStatus } from '../api/order'
 import { listMenus } from '../api/menu'
 import { listTables } from '../api/table'
 import { useAuth } from '../contexts/AuthContext'
@@ -42,6 +42,7 @@ function renderManageModalTitle(title: string, description: string) {
 export default function OrderManage() {
   const { can } = useAuth()
   const canCreateOrder = can('orders:create')
+  const canUpdateOrder = can('orders:update')
   const canUpdateOrderStatus = can('orders:update_status')
   const [orders, setOrders] = useState<Order[]>([])
   const [total, setTotal] = useState(0)
@@ -53,9 +54,12 @@ export default function OrderManage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailOrder, setDetailOrder] = useState<Order | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
   const [menus, setMenus] = useState<Menu[]>([])
   const [tables, setTables] = useState<TTable[]>([])
   const [form] = Form.useForm()
+  const [editForm] = Form.useForm()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -146,6 +150,35 @@ export default function OrderManage() {
     }
   }
 
+  const openEdit = async (orderId: string) => {
+    if (!canUpdateOrder) {
+      message.warning('当前账号没有编辑订单权限')
+      return
+    }
+    try {
+      const [{ order }, menuRes] = await Promise.all([
+        getOrder(orderId),
+        listMenus({ current: 1, pageSize: 500 }),
+      ])
+      const menuList = Array.isArray(menuRes?.menus) ? menuRes.menus : []
+      setMenus(menuList)
+      const menuNameToId = new Map(menuList.map((menu) => [menu.name, menu.id]))
+      editForm.resetFields()
+      editForm.setFieldsValue({
+        remark: order.remark ?? '',
+        items: (order.items ?? []).map((item) => ({
+          menu_id: menuNameToId.get(item.menu_name),
+          quantity: item.quantity,
+          spec_info: item.spec_info ?? '',
+        })),
+      })
+      setEditingOrderId(order.id)
+      setEditOpen(true)
+    } catch {
+      message.error('加载订单编辑数据失败')
+    }
+  }
+
   const onOk = async () => {
     if (!canCreateOrder) {
       message.warning('当前账号没有新建订单权限')
@@ -187,6 +220,37 @@ export default function OrderManage() {
       load()
     } catch {
       message.error('订单创建失败')
+    }
+  }
+
+  const onEditOk = async () => {
+    if (!canUpdateOrder) {
+      message.warning('当前账号没有编辑订单权限')
+      return
+    }
+    if (!editingOrderId) return
+    const values = await editForm.validateFields()
+    const items = (values.items ?? []).filter((item: { menu_id?: string; quantity?: number }) => item?.menu_id && item?.quantity)
+    if (!items.length) {
+      message.error('请至少保留一道菜品')
+      return
+    }
+    const bodyItems = items.map((item: { menu_id: string; quantity: number; spec_info?: string }) => ({
+      menu_id: item.menu_id,
+      quantity: item.quantity,
+      spec_info: item.spec_info || undefined,
+    }))
+    try {
+      const { order } = await updateOrder(editingOrderId, {
+        items: bodyItems,
+        remark: values.remark || undefined,
+      })
+      message.success('订单已更新')
+      setEditOpen(false)
+      load()
+      setDetailOrder((prev) => (prev?.id === order.id ? order : prev))
+    } catch {
+      message.error('更新订单失败')
     }
   }
 
@@ -319,6 +383,15 @@ export default function OrderManage() {
                   <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(record.id)}>
                     查看
                   </Button>
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => openEdit(record.id)}
+                    disabled={!canUpdateOrder}
+                  >
+                    编辑
+                  </Button>
                   <Select
                     size="small"
                     value={normOrderStatus(record.status) || undefined}
@@ -425,10 +498,74 @@ export default function OrderManage() {
 
       <Modal
         className="manage-modal"
+        title={renderManageModalTitle('编辑订单', '支持订单创建后追加菜品、调整规格备注与订单备注。')}
+        open={editOpen}
+        onOk={onEditOk}
+        onCancel={() => setEditOpen(false)}
+        okButtonProps={{ disabled: !canUpdateOrder }}
+        okText="保存"
+        cancelText="取消"
+        centered
+        width={760}
+      >
+        <Form form={editForm} layout="vertical" style={{ marginTop: 5 }}>
+          <div className="manage-form-card">
+            <span className="manage-form-card-title">订单备注</span>
+            <Form.Item name="remark" label="备注" style={{ marginBottom: 0 }}>
+              <Input.TextArea rows={3} placeholder="选填" />
+            </Form.Item>
+          </div>
+          <div className="manage-form-card">
+            <span className="manage-form-card-title">菜品明细</span>
+            <Form.Item label="菜品" style={{ marginBottom: 0 }}>
+              <Form.List name="items">
+                {(fields, { add, remove }) => (
+                  <div className="inline-editor-list">
+                    {fields.map(({ key, name, ...rest }) => (
+                      <div key={key} className="inline-editor-row">
+                        <Form.Item {...rest} name={[name, 'menu_id']} label="菜品" rules={[{ required: true }]}>
+                          <Select
+                            placeholder="选择菜品"
+                            options={menus.map((menu) => ({ label: `${menu.name} ¥${menu.price}`, value: menu.id }))}
+                          />
+                        </Form.Item>
+                        <Form.Item {...rest} name={[name, 'spec_info']} label="规格备注">
+                          <Input placeholder="如：少辣、加饭" />
+                        </Form.Item>
+                        <Form.Item {...rest} name={[name, 'quantity']} label="数量" rules={[{ required: true }]} initialValue={1}>
+                          <InputNumber min={1} style={{ width: '100%' }} />
+                        </Form.Item>
+                        <Button type="text" danger onClick={() => remove(name)}>
+                          删除
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="dashed" onClick={() => add({ quantity: 1 })} block>
+                      + 添加菜品
+                    </Button>
+                  </div>
+                )}
+              </Form.List>
+            </Form.Item>
+          </div>
+        </Form>
+      </Modal>
+
+      <Modal
+        className="manage-modal"
         title={renderManageModalTitle('订单详情', '查看订单状态、桌台信息和菜品明细。')}
         open={detailOpen}
         onCancel={() => setDetailOpen(false)}
-        footer={<Button onClick={() => setDetailOpen(false)}>关闭</Button>}
+        footer={
+          <Space>
+            {detailOrder ? (
+              <Button icon={<EditOutlined />} onClick={() => openEdit(detailOrder.id)} disabled={!canUpdateOrder}>
+                编辑订单
+              </Button>
+            ) : null}
+            <Button onClick={() => setDetailOpen(false)}>关闭</Button>
+          </Space>
+        }
         centered
         width={760}
       >

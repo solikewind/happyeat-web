@@ -9,6 +9,12 @@ export interface CreateOrderItem {
   spec_info?: string
 }
 
+export interface UpdateOrderItem {
+  menu_id: string
+  quantity: number
+  spec_info?: string
+}
+
 /** 统一为前端使用的小写状态，避免各处再做大写兼容 */
 function normalizeOrder(order: Order): Order {
   const s = normOrderStatus(order.status)
@@ -62,6 +68,11 @@ export async function createOrder(body: {
 export async function updateOrderStatus(id: string, status: string) {
   const next = toApiOrderStatus(status) ?? status
   await api.put(`/central/v1/order/${id}/status`, { status: next })
+}
+
+export async function updateOrder(id: string, body: { items: UpdateOrderItem[]; remark?: string }) {
+  const { data } = await api.put<{ order: Order }>(`/central/v1/order/${id}`, body)
+  return { ...data, order: data.order ? normalizeOrder(data.order) : data.order }
 }
 
 export async function listWorkbenchOrders(params?: { current?: number; pageSize?: number; status?: string }) {

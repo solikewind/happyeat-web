@@ -5,6 +5,7 @@ export type PermissionKey =
   | 'workbench:complete'
   | 'orders:view'
   | 'orders:create'
+  | 'orders:update'
   | 'orders:update_status'
   | 'order_desk:view'
   | 'order_desk:create'
@@ -73,6 +74,13 @@ export const PERMISSION_DEFINITIONS: Record<PermissionKey, PermissionDefinition>
     label: '新建订单',
     scene: '订单管理新建订单',
     apis: [{ method: 'POST', path: '/central/v1/orders' }],
+  },
+  'orders:update': {
+    key: 'orders:update',
+    module: 'orders',
+    label: '编辑订单明细',
+    scene: '订单创建后追加菜品或修改备注',
+    apis: [{ method: 'PUT', path: '/central/v1/order/:id' }],
   },
   'orders:update_status': {
     key: 'orders:update_status',
@@ -158,6 +166,7 @@ const ALL_PERMISSIONS: PermissionKey[] = [
   'workbench:complete',
   'orders:view',
   'orders:create',
+  'orders:update',
   'orders:update_status',
   'order_desk:view',
   'order_desk:create',
@@ -170,9 +179,9 @@ const ALL_PERMISSIONS: PermissionKey[] = [
 const DEFAULT_ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
   super_admin: ALL_PERMISSIONS,
   manager: ALL_PERMISSIONS,
-  cashier: ['home:view', 'orders:view', 'orders:create', 'order_desk:view', 'order_desk:create'],
+  cashier: ['home:view', 'orders:view', 'orders:create', 'orders:update', 'order_desk:view', 'order_desk:create'],
   kitchen: ['home:view', 'workbench:view', 'workbench:complete', 'orders:view'],
-  waiter: ['home:view', 'orders:view', 'order_desk:view', 'order_desk:create', 'table:view'],
+  waiter: ['home:view', 'orders:view', 'orders:update', 'order_desk:view', 'order_desk:create', 'table:view'],
   unknown: [],
 }
 

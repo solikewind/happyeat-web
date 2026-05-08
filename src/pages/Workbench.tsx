@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Button, Card, Empty, Pagination, Select, Space, Spin, Tag, Typography, message } from 'antd'
-import { CheckOutlined, ClockCircleOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
-import type { Order } from '../api/types'
-import { listWorkbenchOrders, updateOrderStatus } from '../api/order'
+import { Button, Card, Empty, Form, Input, InputNumber, Modal, Pagination, Select, Space, Spin, Tag, Typography, message } from 'antd'
+import { CheckOutlined, ClockCircleOutlined, EditOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
+import type { Menu, Order } from '../api/types'
+import { listWorkbenchOrders, updateOrder, updateOrderStatus } from '../api/order'
+import { listMenus } from '../api/menu'
 import { useAuth } from '../contexts/AuthContext'
 import { normOrderStatus, ORDER_STATUS_LABEL, ORDER_TYPE_LABEL } from '../utils/orderStatus'
 
@@ -19,12 +20,17 @@ const WORKBENCH_ITEMS_PREVIEW_COUNT = 5
 export default function Workbench() {
   const { can } = useAuth()
   const canComplete = can('workbench:complete')
+  const canEditOrder = can('orders:update')
   const [orders, setOrders] = useState<Order[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
   const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set())
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
+  const [menus, setMenus] = useState<Menu[]>([])
+  const [editForm] = Form.useForm()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -71,6 +77,78 @@ export default function Workbench() {
       }
       return next
     })
+  }
+
+  const openEdit = async (order: Order) => {
+    if (!canEditOrder) {
+      message.warning('当前账号没有编辑订单权限')
+      return
+    }
+    try {
+      const res = await listMenus({ current: 1, pageSize: 500 })
+      const menuList = Array.isArray(res?.menus) ? res.menus : []
+      const menuNameToId = new Map(menuList.map((item) => [item.name, item.id]))
+      const legacyMenus: Menu[] = []
+      editForm.resetFields()
+      editForm.setFieldsValue({
+        remark: order.remark ?? '',
+        items: (order.items ?? []).map((item, index) => {
+          const foundId = menuNameToId.get(item.menu_name)
+          if (foundId) {
+            return {
+              menu_id: foundId,
+              quantity: asNumber(item.quantity),
+              spec_info: asText(item.spec_info, ''),
+            }
+          }
+          const legacyId = `legacy:${order.id}:${index}`
+          legacyMenus.push({
+            id: legacyId,
+            name: item.menu_name,
+            price: asNumber(item.unit_price),
+            category_id: '',
+            created_at: '',
+            updated_at: '',
+          })
+          return {
+            menu_id: legacyId,
+            quantity: asNumber(item.quantity),
+            spec_info: asText(item.spec_info, ''),
+          }
+        }),
+      })
+      setMenus([...menuList, ...legacyMenus])
+      setEditingOrderId(order.id)
+      setEditOpen(true)
+    } catch {
+      message.error('加载订单编辑数据失败')
+    }
+  }
+
+  const handleEditOk = async () => {
+    if (!canEditOrder) return
+    if (!editingOrderId) return
+    const values = await editForm.validateFields()
+    const formItems = (values.items ?? []).filter((item: { menu_id?: string; quantity?: number }) => item?.menu_id && item?.quantity)
+    if (!formItems.length) {
+      message.error('请至少保留一道菜品')
+      return
+    }
+    try {
+      await updateOrder(editingOrderId, {
+        items: formItems.map((item: { menu_id: string; quantity: number; spec_info?: string }) => ({
+          menu_id: item.menu_id,
+          quantity: asNumber(item.quantity),
+          spec_info: item.spec_info || undefined,
+        })),
+        remark: values.remark || undefined,
+      })
+      message.success('订单已更新')
+      setEditOpen(false)
+      load()
+    } catch {
+      message.error('更新订单失败')
+    }
   }
 
   const preparingCount = useMemo(
@@ -210,17 +288,26 @@ export default function Workbench() {
 
                   <div className="workbench-order-footer">
                     <Typography.Text type="secondary">备注：{asText(order.remark, '无')}</Typography.Text>
-                    {normOrderStatus(order.status) === 'completed' ? (
-                      <Tag color="success">已完成</Tag>
-                    ) : normOrderStatus(order.status) === 'cancelled' ? (
-                      <Tag>已取消</Tag>
-                    ) : normOrderStatus(order.status) === 'created' ? (
-                      <Tag color="warning">待支付 · 收款后再出餐</Tag>
-                    ) : (
-                      <Button type="primary" icon={<CheckOutlined />} onClick={() => handleComplete(order.id)} disabled={!canComplete}>
-                        出单完成
-                      </Button>
-                    )}
+                    <Space size={8}>
+                      {(normOrderStatus(order.status) === 'created' ||
+                        normOrderStatus(order.status) === 'paid' ||
+                        normOrderStatus(order.status) === 'preparing') && (
+                        <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(order)} disabled={!canEditOrder}>
+                          编辑
+                        </Button>
+                      )}
+                      {normOrderStatus(order.status) === 'completed' ? (
+                        <Tag color="success">已完成</Tag>
+                      ) : normOrderStatus(order.status) === 'cancelled' ? (
+                        <Tag>已取消</Tag>
+                      ) : normOrderStatus(order.status) === 'created' ? (
+                        <Tag color="warning">待支付 · 收款后再出餐</Tag>
+                      ) : (
+                        <Button type="primary" icon={<CheckOutlined />} onClick={() => handleComplete(order.id)} disabled={!canComplete}>
+                          出单完成
+                        </Button>
+                      )}
+                    </Space>
                   </div>
                 </Space>
               </Card>
@@ -228,6 +315,55 @@ export default function Workbench() {
           })
           )}
         </div>
+
+        <Modal
+          className="manage-modal"
+          title="编辑订单"
+          open={editOpen}
+          onOk={handleEditOk}
+          onCancel={() => setEditOpen(false)}
+          okText="保存"
+          cancelText="取消"
+          okButtonProps={{ disabled: !canEditOrder }}
+          centered
+          width={760}
+        >
+          <Form form={editForm} layout="vertical" style={{ marginTop: 8 }}>
+            <Form.Item name="remark" label="备注">
+              <Input.TextArea rows={3} placeholder="选填" />
+            </Form.Item>
+            <Form.Item label="菜品明细" style={{ marginBottom: 0 }}>
+              <Form.List name="items">
+                {(fields, { add, remove }) => (
+                  <div className="inline-editor-list">
+                    {fields.map(({ key, name, ...rest }) => (
+                      <div key={key} className="inline-editor-row">
+                        <Form.Item {...rest} name={[name, 'menu_id']} label="菜品" rules={[{ required: true, message: '请选择菜品' }]}>
+                          <Select
+                            placeholder="选择菜品"
+                            options={menus.map((menu) => ({ label: `${menu.name} ¥${asNumber(menu.price).toFixed(2)}`, value: menu.id }))}
+                          />
+                        </Form.Item>
+                        <Form.Item {...rest} name={[name, 'spec_info']} label="规格备注">
+                          <Input placeholder="如：少辣、加饭" />
+                        </Form.Item>
+                        <Form.Item {...rest} name={[name, 'quantity']} label="数量" rules={[{ required: true, message: '请输入数量' }]}>
+                          <InputNumber min={1} style={{ width: '100%' }} />
+                        </Form.Item>
+                        <Button type="text" danger onClick={() => remove(name)}>
+                          删除
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="dashed" onClick={() => add({ quantity: 1 })} block>
+                      + 添加菜品
+                    </Button>
+                  </div>
+                )}
+              </Form.List>
+            </Form.Item>
+          </Form>
+        </Modal>
 
         <div className="workbench-pager-bar">
           <Space style={{ width: '100%', justifyContent: 'space-between' }} align="center">
