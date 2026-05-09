@@ -75,6 +75,11 @@ export async function updateOrder(id: string, body: { items: UpdateOrderItem[]; 
   return { ...data, order: data.order ? normalizeOrder(data.order) : data.order }
 }
 
+/** 手动触发商鹏厨房小票（与自动打印同模板，标题为「手动打印」） */
+export async function printOrderKitchen(id: string) {
+  await api.post(`/central/v1/order/${id}/print`)
+}
+
 export async function listWorkbenchOrders(params?: { current?: number; pageSize?: number; status?: string }) {
   const query = params ? withApiStatus(params) : undefined
   const { data } = await api.get<{ orders: Order[]; total: number }>('/central/v1/workbench/orders', { params: query })

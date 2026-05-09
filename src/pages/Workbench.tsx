@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Button, Card, Empty, Form, Input, InputNumber, Modal, Pagination, Select, Space, Spin, Tag, Typography, message } from 'antd'
-import { CheckOutlined, ClockCircleOutlined, EditOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
+import { Button, Card, Empty, Form, Input, InputNumber, Modal, Pagination, Select, Space, Spin, Tag, Tooltip, Typography, message } from 'antd'
+import { CheckOutlined, ClockCircleOutlined, EditOutlined, LeftOutlined, PrinterOutlined, RightOutlined } from '@ant-design/icons'
 import type { Menu, Order } from '../api/types'
-import { listWorkbenchOrders, updateOrder, updateOrderStatus } from '../api/order'
+import { listWorkbenchOrders, printOrderKitchen, updateOrder, updateOrderStatus } from '../api/order'
 import { listMenus } from '../api/menu'
 import { useAuth } from '../contexts/AuthContext'
 import { normOrderStatus, ORDER_STATUS_LABEL, ORDER_TYPE_LABEL } from '../utils/orderStatus'
@@ -21,6 +21,7 @@ export default function Workbench() {
   const { can } = useAuth()
   const canComplete = can('workbench:complete')
   const canEditOrder = can('orders:update')
+  const canPrintKitchen = can('orders:print_kitchen')
   const [orders, setOrders] = useState<Order[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -31,6 +32,7 @@ export default function Workbench() {
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
   const [menus, setMenus] = useState<Menu[]>([])
   const [editForm] = Form.useForm()
+  const [printingId, setPrintingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -52,6 +54,22 @@ export default function Workbench() {
   useEffect(() => {
     load()
   }, [load])
+
+  const handlePrintKitchen = async (id: string) => {
+    if (!canPrintKitchen) {
+      message.warning('当前账号没有厨房打印权限')
+      return
+    }
+    setPrintingId(id)
+    try {
+      await printOrderKitchen(id)
+      message.success('已提交厨房打印')
+    } catch {
+      message.error('厨房打印失败，请检查商鹏配置或网络')
+    } finally {
+      setPrintingId(null)
+    }
+  }
 
   const handleComplete = async (id: string) => {
     if (!canComplete) {
@@ -177,18 +195,26 @@ export default function Workbench() {
                 }}
                 options={Object.entries(ORDER_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
               />
-              <Button
-                type={statusFilter === 'completed' ? 'primary' : 'default'}
-                onClick={() => {
-                  setStatusFilter((prev) => (prev === 'completed' ? undefined : 'completed'))
-                  setPage(1)
-                }}
+              <Tooltip
+                title="默认列表不含「已完成」订单（后厨只看进行中的单）。点此或上方下拉选「已完成」可查看已出单单据；再点一次恢复默认。"
+                placement="bottom"
               >
-                已完成
-              </Button>
+                <Button
+                  type={statusFilter === 'completed' ? 'primary' : 'default'}
+                  onClick={() => {
+                    setStatusFilter((prev) => (prev === 'completed' ? undefined : 'completed'))
+                    setPage(1)
+                  }}
+                >
+                  已完成
+                </Button>
+              </Tooltip>
             </div>
             <Tag color="orange">优先处理 已支付 / 制作中</Tag>
           </div>
+          <Typography.Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12, lineHeight: 1.55 }}>
+            说明：默认仅展示待支付、已支付、制作中；不展示已完成/已取消。需要查历史完成单时，点「已完成」或在「按状态筛选」里选择对应状态。
+          </Typography.Text>
           <div className="compact-summary-inline compact-summary-inline--dense">
             <Tag color="blue">待处理总数 {total}</Tag>
             <Tag color="purple">本页制作中 {preparingCount}</Tag>
@@ -288,14 +314,25 @@ export default function Workbench() {
 
                   <div className="workbench-order-footer">
                     <Typography.Text type="secondary">备注：{asText(order.remark, '无')}</Typography.Text>
-                    <Space size={8}>
-                      {(normOrderStatus(order.status) === 'created' ||
-                        normOrderStatus(order.status) === 'paid' ||
-                        normOrderStatus(order.status) === 'preparing') && (
-                        <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(order)} disabled={!canEditOrder}>
-                          编辑
+                    <Space size={8} align="start" wrap>
+                      <Space direction="vertical" size={4} align="end">
+                        {(normOrderStatus(order.status) === 'created' ||
+                          normOrderStatus(order.status) === 'paid' ||
+                          normOrderStatus(order.status) === 'preparing') && (
+                          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(order)} disabled={!canEditOrder}>
+                            编辑
+                          </Button>
+                        )}
+                        <Button
+                          size="small"
+                          icon={<PrinterOutlined />}
+                          loading={printingId === order.id}
+                          onClick={() => handlePrintKitchen(order.id)}
+                          disabled={!canPrintKitchen}
+                        >
+                          打印
                         </Button>
-                      )}
+                      </Space>
                       {normOrderStatus(order.status) === 'completed' ? (
                         <Tag color="success">已完成</Tag>
                       ) : normOrderStatus(order.status) === 'cancelled' ? (

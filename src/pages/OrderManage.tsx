@@ -16,9 +16,9 @@ import {
   Typography,
   message,
 } from 'antd'
-import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
+import { EditOutlined, EyeOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons'
 import type { Order, Menu, Table as TTable } from '../api/types'
-import { createOrder, getOrder, listOrders, updateOrder, updateOrderStatus } from '../api/order'
+import { createOrder, getOrder, listOrders, printOrderKitchen, updateOrder, updateOrderStatus } from '../api/order'
 import { listMenus } from '../api/menu'
 import { listTables } from '../api/table'
 import { useAuth } from '../contexts/AuthContext'
@@ -44,6 +44,7 @@ export default function OrderManage() {
   const canCreateOrder = can('orders:create')
   const canUpdateOrder = can('orders:update')
   const canUpdateOrderStatus = can('orders:update_status')
+  const canPrintKitchen = can('orders:print_kitchen')
   const [orders, setOrders] = useState<Order[]>([])
   const [total, setTotal] = useState(0)
   const [pendingTotal, setPendingTotal] = useState(0)
@@ -60,6 +61,7 @@ export default function OrderManage() {
   const [tables, setTables] = useState<TTable[]>([])
   const [form] = Form.useForm()
   const [editForm] = Form.useForm()
+  const [printingId, setPrintingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -111,6 +113,22 @@ export default function OrderManage() {
       setDetailOpen(true)
     } catch {
       message.error('获取订单详情失败')
+    }
+  }
+
+  const handlePrintKitchen = async (id: string) => {
+    if (!canPrintKitchen) {
+      message.warning('当前账号没有厨房打印权限')
+      return
+    }
+    setPrintingId(id)
+    try {
+      await printOrderKitchen(id)
+      message.success('已提交厨房打印')
+    } catch {
+      message.error('厨房打印失败，请检查商鹏配置或网络')
+    } finally {
+      setPrintingId(null)
     }
   }
 
@@ -379,19 +397,33 @@ export default function OrderManage() {
               fixed: 'right',
               className: 'table-col-actions',
               render: (_: unknown, record: Order) => (
-                <Space wrap size={4}>
+                <Space wrap size={4} align="start">
                   <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(record.id)}>
                     查看
                   </Button>
-                  <Button
-                    type="link"
-                    size="small"
-                    icon={<EditOutlined />}
-                    onClick={() => openEdit(record.id)}
-                    disabled={!canUpdateOrder}
-                  >
-                    编辑
-                  </Button>
+                  <Space direction="vertical" size={0} style={{ lineHeight: 1.2 }}>
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={() => openEdit(record.id)}
+                      disabled={!canUpdateOrder}
+                      style={{ padding: 0, height: 'auto' }}
+                    >
+                      编辑
+                    </Button>
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<PrinterOutlined />}
+                      loading={printingId === record.id}
+                      onClick={() => handlePrintKitchen(record.id)}
+                      disabled={!canPrintKitchen}
+                      style={{ padding: 0, height: 'auto' }}
+                    >
+                      打印
+                    </Button>
+                  </Space>
                   <Select
                     size="small"
                     value={normOrderStatus(record.status) || undefined}
@@ -557,11 +589,21 @@ export default function OrderManage() {
         open={detailOpen}
         onCancel={() => setDetailOpen(false)}
         footer={
-          <Space>
+          <Space align="start" size="middle">
             {detailOrder ? (
-              <Button icon={<EditOutlined />} onClick={() => openEdit(detailOrder.id)} disabled={!canUpdateOrder}>
-                编辑订单
-              </Button>
+              <Space direction="vertical" size="small" style={{ alignItems: 'flex-start' }}>
+                <Button icon={<EditOutlined />} onClick={() => openEdit(detailOrder.id)} disabled={!canUpdateOrder}>
+                  编辑订单
+                </Button>
+                <Button
+                  icon={<PrinterOutlined />}
+                  loading={printingId === detailOrder.id}
+                  onClick={() => handlePrintKitchen(detailOrder.id)}
+                  disabled={!canPrintKitchen}
+                >
+                  打印厨房单
+                </Button>
+              </Space>
             ) : null}
             <Button onClick={() => setDetailOpen(false)}>关闭</Button>
           </Space>
