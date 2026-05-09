@@ -70,6 +70,9 @@ jobs:
               listen 80;
               server_name ${{ secrets.SERVER_DOMAIN }};
 
+              # 默认 1m，菜单图 multipart 上传会 413；需 ≥ 后端 go-zero MaxBytes
+              client_max_body_size 10m;
+
               root ${{ secrets.DEPLOY_PATH }}/dist;
               index index.html;
 
@@ -90,13 +93,17 @@ jobs:
                 try_files $uri $uri/ /index.html;
               }
 
-              # API 代理（可选）
+              # API 代理（可选）；与 server 块 client_max_body_size 二选一即可，此处再写一层防遗漏
               location /api/ {
+                client_max_body_size 10m;
                 proxy_pass ${{ secrets.API_PROXY_URL }};
                 proxy_http_version 1.1;
                 proxy_set_header Upgrade $http_upgrade;
                 proxy_set_header Connection 'upgrade';
                 proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
                 proxy_cache_bypass $http_upgrade;
               }
             }
