@@ -1,10 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Card, Empty, Pagination, Select, Space, Spin, Tag, Typography, message } from 'antd'
-import { CheckOutlined, ClockCircleOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
+import {
+  CheckOutlined,
+  ClockCircleOutlined,
+  LeftOutlined,
+  PlayCircleOutlined,
+  RightOutlined,
+  WarningOutlined,
+} from '@ant-design/icons'
 import type { Order } from '../api/types'
 import { listWorkbenchOrders, updateOrderStatus } from '../api/order'
 import { useAuth } from '../contexts/AuthContext'
-import { normOrderStatus, ORDER_STATUS_LABEL, ORDER_TYPE_LABEL } from '../utils/orderStatus'
+import {
+  compareWorkbenchOrderStatus,
+  normOrderStatus,
+  ORDER_STATUS_LABEL,
+  ORDER_TYPE_LABEL,
+  orderStatusLabel,
+  workbenchAdvanceStatus,
+  WORKBENCH_STATUS_HINT,
+} from '../utils/orderStatus'
 
 const asText = (value: unknown, fallback = '-') => {
   if (typeof value === 'string') return value
@@ -47,17 +62,17 @@ export default function Workbench() {
     load()
   }, [load])
 
-  const handleComplete = async (id: string) => {
+  const handleAdvance = async (id: string, next: 'preparing' | 'completed') => {
     if (!canComplete) {
       message.warning('当前账号没有出单权限')
       return
     }
     try {
-      await updateOrderStatus(id, 'completed')
-      message.success('订单已标记为完成')
+      await updateOrderStatus(id, next)
+      message.success(next === 'preparing' ? '已开始制作' : '订单已标记为完成')
       load()
     } catch {
-      message.error('更新订单状态失败')
+      message.error(next === 'preparing' ? '无法开始制作，请确认订单已支付' : '无法完成出单，请确认订单处于制作中')
     }
   }
 
@@ -73,10 +88,20 @@ export default function Workbench() {
     })
   }
 
-  const preparingCount = useMemo(
-    () => orders.filter((item) => normOrderStatus(item.status) === 'preparing').length,
+  const sortedOrders = useMemo(
+    () => [...orders].sort((a, b) => compareWorkbenchOrderStatus(a.status, b.status)),
     [orders],
   )
+
+  const statusCounts = useMemo(() => {
+    const counts = { created: 0, paid: 0, preparing: 0 }
+    for (const item of orders) {
+      const k = normOrderStatus(item.status)
+      if (k === 'created' || k === 'paid' || k === 'preparing') counts[k] += 1
+    }
+    return counts
+  }, [orders])
+
   const pageAmount = useMemo(() => orders.reduce((sum, item) => sum + asNumber(item.total_amount), 0), [orders])
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / WORKBENCH_PAGE_SIZE)), [total])
   const canPrev = page > 1
@@ -109,11 +134,17 @@ export default function Workbench() {
                 已完成
               </Button>
             </div>
-            <Tag color="orange">优先处理 已支付 / 制作中</Tag>
+            <Tag color="orange">优先处理：制作中 → 已支付</Tag>
           </div>
           <div className="compact-summary-inline compact-summary-inline--dense">
             <Tag color="blue">待处理总数 {total}</Tag>
-            <Tag color="purple">本页制作中 {preparingCount}</Tag>
+            <Tag color="purple">制作中 {statusCounts.preparing}</Tag>
+            <Tag color="geekblue">已支付 {statusCounts.paid}</Tag>
+            {statusCounts.created > 0 ? (
+              <Tag color="warning" icon={<WarningOutlined />}>
+                待支付 {statusCounts.created}
+              </Tag>
+            ) : null}
             <Tag color="gold">本页金额 ¥{pageAmount.toFixed(2)}</Tag>
           </div>
         </div>
@@ -128,13 +159,19 @@ export default function Workbench() {
               <Empty description="暂无待处理订单" />
             </div>
           ) : (
-            orders.map((order) => {
+            sortedOrders.map((order) => {
+            const statusKey = normOrderStatus(order.status) || 'unknown'
             const locationText = order.table_code
               ? `${order.table_category ? `${asText(order.table_category, '')}-` : ''}${asText(order.table_code)}`
               : '外带订单'
+            const advance = workbenchAdvanceStatus(order.status)
 
             return (
-              <Card key={order.id} loading={loading} className="workbench-order-card">
+              <Card
+                key={order.id}
+                loading={loading}
+                className={`workbench-order-card workbench-order-card--${statusKey}`}
+              >
                 <Space direction="vertical" size={14} style={{ width: '100%' }}>
                   <div className="workbench-order-topline">
                     <div>
@@ -170,8 +207,9 @@ export default function Workbench() {
                     <span className={`workbench-status-pill ${order.order_type === 'dine_in' ? 'is-dine-in' : 'is-takeaway'}`}>
                       {ORDER_TYPE_LABEL[asText(order.order_type, '')] ?? asText(order.order_type)}
                     </span>
-                    <span className={`workbench-status-pill workbench-status-pill-state is-${normOrderStatus(order.status) || 'unknown'}`}>
-                      {ORDER_STATUS_LABEL[normOrderStatus(order.status)] ?? asText(order.status)}
+                    <span className={`workbench-status-pill workbench-status-pill-state is-${statusKey}`}>
+                      {statusKey === 'created' ? <WarningOutlined className="workbench-status-pill-icon" /> : null}
+                      {orderStatusLabel(order.status)}
                     </span>
                   </div>
 
@@ -209,18 +247,43 @@ export default function Workbench() {
                   </div>
 
                   <div className="workbench-order-footer">
-                    <Typography.Text type="secondary">备注：{asText(order.remark, '无')}</Typography.Text>
-                    {normOrderStatus(order.status) === 'completed' ? (
+                    <Typography.Text type="secondary" className="workbench-footer-hint">
+                      {WORKBENCH_STATUS_HINT[statusKey] ? <span>{WORKBENCH_STATUS_HINT[statusKey]}</span> : null}
+                      {order.remark?.trim() ? (
+                        <span className="workbench-footer-remark">
+                          {WORKBENCH_STATUS_HINT[statusKey] ? ' · ' : ''}备注：{order.remark.trim()}
+                        </span>
+                      ) : WORKBENCH_STATUS_HINT[statusKey] ? null : (
+                        <span>备注：无</span>
+                      )}
+                    </Typography.Text>
+                    {statusKey === 'completed' ? (
                       <Tag color="success">已完成</Tag>
-                    ) : normOrderStatus(order.status) === 'cancelled' ? (
+                    ) : statusKey === 'cancelled' ? (
                       <Tag>已取消</Tag>
-                    ) : normOrderStatus(order.status) === 'created' ? (
-                      <Tag color="warning">待支付 · 收款后再出餐</Tag>
-                    ) : (
-                      <Button type="primary" icon={<CheckOutlined />} onClick={() => handleComplete(order.id)} disabled={!canComplete}>
+                    ) : statusKey === 'created' ? (
+                      <Tag color="warning" icon={<WarningOutlined />}>
+                        待支付
+                      </Tag>
+                    ) : advance === 'preparing' ? (
+                      <Button
+                        type="primary"
+                        icon={<PlayCircleOutlined />}
+                        onClick={() => handleAdvance(order.id, 'preparing')}
+                        disabled={!canComplete}
+                      >
+                        开始制作
+                      </Button>
+                    ) : advance === 'completed' ? (
+                      <Button
+                        type="primary"
+                        icon={<CheckOutlined />}
+                        onClick={() => handleAdvance(order.id, 'completed')}
+                        disabled={!canComplete}
+                      >
                         出单完成
                       </Button>
-                    )}
+                    ) : null}
                   </div>
                 </Space>
               </Card>

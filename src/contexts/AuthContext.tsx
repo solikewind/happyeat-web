@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { getToken, setToken as saveToken, clearToken, isJwtExpired } from '../api/client'
+import { fetchRolePermissionConfig } from '../api/permission'
 import { hasPermission, type PermissionKey } from '../auth/permissions'
 
 interface AuthContextValue {
@@ -54,6 +55,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTokenState(null)
     setRole(null)
   }, [])
+
+  useEffect(() => {
+    if (!token) return
+    void fetchRolePermissionConfig().catch(() => {
+      /* 无权限接口时沿用本地默认矩阵 */
+    })
+  }, [token])
 
   const value: AuthContextValue = {
     token,

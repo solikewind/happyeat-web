@@ -8,6 +8,9 @@ export interface LoginReq {
 export interface LoginReply {
   access_token: string
   expire: number
+  user_code?: string
+  role?: string
+  roles?: string[]
 }
 
 /** 菜单分类（与后端 MenuCategory 一致） */
