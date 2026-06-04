@@ -1,15 +1,34 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Button, Card, Empty, Pagination, Select, Space, Spin, Tag, Typography, message } from 'antd'
+import {
+  Button,
+  Card,
+  Empty,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Pagination,
+  Select,
+  Space,
+  Spin,
+  Tag,
+  Tooltip,
+  Typography,
+  message,
+} from 'antd'
 import {
   CheckOutlined,
   ClockCircleOutlined,
+  EditOutlined,
   LeftOutlined,
   PlayCircleOutlined,
+  PrinterOutlined,
   RightOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
-import type { Order } from '../api/types'
-import { listWorkbenchOrders, updateOrderStatus } from '../api/order'
+import type { Menu, Order } from '../api/types'
+import { listWorkbenchOrders, printOrderKitchen, updateOrder, updateOrderStatus } from '../api/order'
+import { listMenus } from '../api/menu'
 import { useAuth } from '../contexts/AuthContext'
 import {
   compareWorkbenchOrderStatus,
@@ -34,12 +53,19 @@ const WORKBENCH_ITEMS_PREVIEW_COUNT = 5
 export default function Workbench() {
   const { can } = useAuth()
   const canComplete = can('workbench:complete')
+  const canEditOrder = can('orders:update')
+  const canPrintKitchen = can('orders:print_kitchen')
   const [orders, setOrders] = useState<Order[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
   const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set())
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
+  const [menus, setMenus] = useState<Menu[]>([])
+  const [editForm] = Form.useForm()
+  const [printingId, setPrintingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -72,7 +98,25 @@ export default function Workbench() {
       message.success(next === 'preparing' ? '已开始制作' : '订单已标记为完成')
       load()
     } catch {
-      message.error(next === 'preparing' ? '无法开始制作，请确认订单已支付' : '无法完成出单，请确认订单处于制作中')
+      message.error(
+        next === 'preparing' ? '无法开始制作，请确认订单已支付' : '无法完成出单，请确认订单处于制作中',
+      )
+    }
+  }
+
+  const handlePrintKitchen = async (id: string) => {
+    if (!canPrintKitchen) {
+      message.warning('当前账号没有厨房打印权限')
+      return
+    }
+    setPrintingId(id)
+    try {
+      await printOrderKitchen(id)
+      message.success('已提交厨房打印')
+    } catch {
+      message.error('厨房打印失败，请检查商鹏配置或网络')
+    } finally {
+      setPrintingId(null)
     }
   }
 
@@ -92,6 +136,80 @@ export default function Workbench() {
     () => [...orders].sort((a, b) => compareWorkbenchOrderStatus(a.status, b.status)),
     [orders],
   )
+
+  const openEdit = async (order: Order) => {
+    if (!canEditOrder) {
+      message.warning('当前账号没有编辑订单权限')
+      return
+    }
+    try {
+      const res = await listMenus({ current: 1, pageSize: 500 })
+      const menuList = Array.isArray(res?.menus) ? res.menus : []
+      const menuNameToId = new Map(menuList.map((item) => [item.name, item.id]))
+      const legacyMenus: Menu[] = []
+      editForm.resetFields()
+      editForm.setFieldsValue({
+        remark: order.remark ?? '',
+        items: (order.items ?? []).map((item, index) => {
+          const foundId = menuNameToId.get(item.menu_name)
+          if (foundId) {
+            return {
+              menu_id: foundId,
+              quantity: asNumber(item.quantity),
+              spec_info: asText(item.spec_info, ''),
+            }
+          }
+          const legacyId = `legacy:${order.id}:${index}`
+          legacyMenus.push({
+            id: legacyId,
+            name: item.menu_name,
+            price: asNumber(item.unit_price),
+            category_id: '',
+            created_at: '',
+            updated_at: '',
+          })
+          return {
+            menu_id: legacyId,
+            quantity: asNumber(item.quantity),
+            spec_info: asText(item.spec_info, ''),
+          }
+        }),
+      })
+      setMenus([...menuList, ...legacyMenus])
+      setEditingOrderId(order.id)
+      setEditOpen(true)
+    } catch {
+      message.error('加载订单编辑数据失败')
+    }
+  }
+
+  const handleEditOk = async () => {
+    if (!canEditOrder) return
+    if (!editingOrderId) return
+    const values = await editForm.validateFields()
+    const formItems = (values.items ?? []).filter(
+      (item: { menu_id?: string; quantity?: number }) => item?.menu_id && item?.quantity,
+    )
+    if (!formItems.length) {
+      message.error('请至少保留一道菜品')
+      return
+    }
+    try {
+      await updateOrder(editingOrderId, {
+        items: formItems.map((item: { menu_id: string; quantity: number; spec_info?: string }) => ({
+          menu_id: item.menu_id,
+          quantity: asNumber(item.quantity),
+          spec_info: item.spec_info || undefined,
+        })),
+        remark: values.remark || undefined,
+      })
+      message.success('订单已更新')
+      setEditOpen(false)
+      load()
+    } catch {
+      message.error('更新订单失败')
+    }
+  }
 
   const statusCounts = useMemo(() => {
     const counts = { created: 0, paid: 0, preparing: 0 }
@@ -124,18 +242,26 @@ export default function Workbench() {
                 }}
                 options={Object.entries(ORDER_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
               />
-              <Button
-                type={statusFilter === 'completed' ? 'primary' : 'default'}
-                onClick={() => {
-                  setStatusFilter((prev) => (prev === 'completed' ? undefined : 'completed'))
-                  setPage(1)
-                }}
+              <Tooltip
+                title="默认列表不含「已完成」订单（后厨只看进行中的单）。点此或上方下拉选「已完成」可查看已出单单据；再点一次恢复默认。"
+                placement="bottom"
               >
-                已完成
-              </Button>
+                <Button
+                  type={statusFilter === 'completed' ? 'primary' : 'default'}
+                  onClick={() => {
+                    setStatusFilter((prev) => (prev === 'completed' ? undefined : 'completed'))
+                    setPage(1)
+                  }}
+                >
+                  已完成
+                </Button>
+              </Tooltip>
             </div>
             <Tag color="orange">优先处理：制作中 → 已支付</Tag>
           </div>
+          <Typography.Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12, lineHeight: 1.55 }}>
+            说明：默认仅展示待支付、已支付、制作中；不展示已完成/已取消。需要查历史完成单时，点「已完成」或在「按状态筛选」里选择对应状态。
+          </Typography.Text>
           <div className="compact-summary-inline compact-summary-inline--dense">
             <Tag color="blue">待处理总数 {total}</Tag>
             <Tag color="purple">制作中 {statusCounts.preparing}</Tag>
@@ -160,137 +286,230 @@ export default function Workbench() {
             </div>
           ) : (
             sortedOrders.map((order) => {
-            const statusKey = normOrderStatus(order.status) || 'unknown'
-            const locationText = order.table_code
-              ? `${order.table_category ? `${asText(order.table_category, '')}-` : ''}${asText(order.table_code)}`
-              : '外带订单'
-            const advance = workbenchAdvanceStatus(order.status)
+              const statusKey = normOrderStatus(order.status) || 'unknown'
+              const locationText = order.table_code
+                ? `${order.table_category ? `${asText(order.table_category, '')}-` : ''}${asText(order.table_code)}`
+                : '外带订单'
+              const advance = workbenchAdvanceStatus(order.status)
 
-            return (
-              <Card
-                key={order.id}
-                loading={loading}
-                className={`workbench-order-card workbench-order-card--${statusKey}`}
-              >
-                <Space direction="vertical" size={14} style={{ width: '100%' }}>
-                  <div className="workbench-order-topline">
-                    <div>
-                      <Typography.Text type="secondary">订单号</Typography.Text>
-                      <Typography.Title level={5} className="workbench-order-no" style={{ margin: '4px 0 0' }}>
-                        {asText(order.order_no)}
-                      </Typography.Title>
+              return (
+                <Card
+                  key={order.id}
+                  loading={loading}
+                  className={`workbench-order-card workbench-order-card--${statusKey}`}
+                >
+                  <Space direction="vertical" size={14} style={{ width: '100%' }}>
+                    <div className="workbench-order-topline">
+                      <div>
+                        <Typography.Text type="secondary">订单号</Typography.Text>
+                        <Typography.Title level={5} className="workbench-order-no" style={{ margin: '4px 0 0' }}>
+                          {asText(order.order_no)}
+                        </Typography.Title>
+                      </div>
+                      <div className="workbench-order-headside">
+                        <div
+                          className={`workbench-meta-chip workbench-meta-chip-location workbench-key-location ${
+                            order.table_code ? 'is-dine-in' : 'is-takeaway'
+                          }`}
+                        >
+                          <span className="workbench-location-text">{locationText}</span>
+                        </div>
+                        <div className="workbench-amount-chip">
+                          <span className="workbench-amount-currency">¥</span>
+                          <span className="workbench-amount-value">{asNumber(order.total_amount).toFixed(2)}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="workbench-order-headside">
-                      <div
-                        className={`workbench-meta-chip workbench-meta-chip-location workbench-key-location ${
-                          order.table_code ? 'is-dine-in' : 'is-takeaway'
-                        }`}
+
+                    <div className="workbench-order-meta-row">
+                      <div className="workbench-meta-chip">
+                        <ClockCircleOutlined />
+                        <span>
+                          {order.created_at
+                            ? new Date(order.created_at).toLocaleTimeString('zh-CN', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '--:--'}
+                        </span>
+                      </div>
+                      <span
+                        className={`workbench-status-pill ${order.order_type === 'dine_in' ? 'is-dine-in' : 'is-takeaway'}`}
                       >
-                        <span className="workbench-location-text">{locationText}</span>
-                      </div>
-                      <div className="workbench-amount-chip">
-                        <span className="workbench-amount-currency">¥</span>
-                        <span className="workbench-amount-value">{asNumber(order.total_amount).toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="workbench-order-meta-row">
-                    <div className="workbench-meta-chip">
-                      <ClockCircleOutlined />
-                      <span>
-                        {order.created_at
-                          ? new Date(order.created_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-                          : '--:--'}
+                        {ORDER_TYPE_LABEL[asText(order.order_type, '')] ?? asText(order.order_type)}
+                      </span>
+                      <span className={`workbench-status-pill workbench-status-pill-state is-${statusKey}`}>
+                        {statusKey === 'created' ? <WarningOutlined className="workbench-status-pill-icon" /> : null}
+                        {orderStatusLabel(order.status)}
                       </span>
                     </div>
-                    <span className={`workbench-status-pill ${order.order_type === 'dine_in' ? 'is-dine-in' : 'is-takeaway'}`}>
-                      {ORDER_TYPE_LABEL[asText(order.order_type, '')] ?? asText(order.order_type)}
-                    </span>
-                    <span className={`workbench-status-pill workbench-status-pill-state is-${statusKey}`}>
-                      {statusKey === 'created' ? <WarningOutlined className="workbench-status-pill-icon" /> : null}
-                      {orderStatusLabel(order.status)}
-                    </span>
-                  </div>
 
-                  <div className="workbench-order-items">
-                    {(() => {
-                      const items = Array.isArray(order.items) ? order.items : []
-                      const isExpanded = expandedOrderIds.has(order.id)
-                      const visibleItems = isExpanded ? items : items.slice(0, WORKBENCH_ITEMS_PREVIEW_COUNT)
-                      const hiddenCount = Math.max(0, items.length - visibleItems.length)
+                    <div className="workbench-order-items">
+                      {(() => {
+                        const items = Array.isArray(order.items) ? order.items : []
+                        const isExpanded = expandedOrderIds.has(order.id)
+                        const visibleItems = isExpanded ? items : items.slice(0, WORKBENCH_ITEMS_PREVIEW_COUNT)
+                        const hiddenCount = Math.max(0, items.length - visibleItems.length)
 
-                      return (
-                        <>
-                          {visibleItems.map((item, index) => (
-                            <div key={`${order.id}-${asText(item.menu_name, 'item')}-${index}`} className="workbench-order-item">
-                              <div>
-                                <Typography.Text strong>{asText(item.menu_name)}</Typography.Text>
-                                <Typography.Text type="secondary" className="workbench-order-item-note">
-                                  {asText(item.spec_info, '默认规格')}
-                                </Typography.Text>
+                        return (
+                          <>
+                            {visibleItems.map((item, index) => (
+                              <div
+                                key={`${order.id}-${asText(item.menu_name, 'item')}-${index}`}
+                                className="workbench-order-item"
+                              >
+                                <div>
+                                  <Typography.Text strong>{asText(item.menu_name)}</Typography.Text>
+                                  <Typography.Text type="secondary" className="workbench-order-item-note">
+                                    {asText(item.spec_info, '默认规格')}
+                                  </Typography.Text>
+                                </div>
+                                <div className="workbench-order-item-side">
+                                  <Typography.Text>x{asNumber(item.quantity)}</Typography.Text>
+                                  <Typography.Text type="secondary">¥{asNumber(item.amount).toFixed(2)}</Typography.Text>
+                                </div>
                               </div>
-                              <div className="workbench-order-item-side">
-                                <Typography.Text>x{asNumber(item.quantity)}</Typography.Text>
-                                <Typography.Text type="secondary">¥{asNumber(item.amount).toFixed(2)}</Typography.Text>
-                              </div>
-                            </div>
-                          ))}
-                          {items.length > WORKBENCH_ITEMS_PREVIEW_COUNT && (
-                            <Button type="link" className="workbench-items-toggle" onClick={() => toggleOrderItems(order.id)}>
-                              {isExpanded ? '收起菜品' : `还有 ${hiddenCount} 项，点击展开`}
+                            ))}
+                            {items.length > WORKBENCH_ITEMS_PREVIEW_COUNT && (
+                              <Button type="link" className="workbench-items-toggle" onClick={() => toggleOrderItems(order.id)}>
+                                {isExpanded ? '收起菜品' : `还有 ${hiddenCount} 项，点击展开`}
+                              </Button>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </div>
+
+                    <div className="workbench-order-footer">
+                      <Typography.Text type="secondary" className="workbench-footer-hint">
+                        {WORKBENCH_STATUS_HINT[statusKey] ? <span>{WORKBENCH_STATUS_HINT[statusKey]}</span> : null}
+                        {order.remark?.trim() ? (
+                          <span className="workbench-footer-remark">
+                            {WORKBENCH_STATUS_HINT[statusKey] ? ' · ' : ''}备注：{order.remark.trim()}
+                          </span>
+                        ) : WORKBENCH_STATUS_HINT[statusKey] ? null : (
+                          <span>备注：无</span>
+                        )}
+                      </Typography.Text>
+                      <Space size={8} align="start" wrap>
+                        <Space direction="vertical" size={4} align="end">
+                          {(statusKey === 'created' || statusKey === 'paid' || statusKey === 'preparing') && (
+                            <Button
+                              size="small"
+                              icon={<EditOutlined />}
+                              onClick={() => openEdit(order)}
+                              disabled={!canEditOrder}
+                            >
+                              编辑
                             </Button>
                           )}
-                        </>
-                      )
-                    })()}
-                  </div>
-
-                  <div className="workbench-order-footer">
-                    <Typography.Text type="secondary" className="workbench-footer-hint">
-                      {WORKBENCH_STATUS_HINT[statusKey] ? <span>{WORKBENCH_STATUS_HINT[statusKey]}</span> : null}
-                      {order.remark?.trim() ? (
-                        <span className="workbench-footer-remark">
-                          {WORKBENCH_STATUS_HINT[statusKey] ? ' · ' : ''}备注：{order.remark.trim()}
-                        </span>
-                      ) : WORKBENCH_STATUS_HINT[statusKey] ? null : (
-                        <span>备注：无</span>
-                      )}
-                    </Typography.Text>
-                    {statusKey === 'completed' ? (
-                      <Tag color="success">已完成</Tag>
-                    ) : statusKey === 'cancelled' ? (
-                      <Tag>已取消</Tag>
-                    ) : statusKey === 'created' ? (
-                      <Tag color="warning" icon={<WarningOutlined />}>
-                        待支付
-                      </Tag>
-                    ) : advance === 'preparing' ? (
-                      <Button
-                        type="primary"
-                        icon={<PlayCircleOutlined />}
-                        onClick={() => handleAdvance(order.id, 'preparing')}
-                        disabled={!canComplete}
-                      >
-                        开始制作
-                      </Button>
-                    ) : advance === 'completed' ? (
-                      <Button
-                        type="primary"
-                        icon={<CheckOutlined />}
-                        onClick={() => handleAdvance(order.id, 'completed')}
-                        disabled={!canComplete}
-                      >
-                        出单完成
-                      </Button>
-                    ) : null}
-                  </div>
-                </Space>
-              </Card>
-            )
-          })
+                          <Button
+                            size="small"
+                            icon={<PrinterOutlined />}
+                            loading={printingId === order.id}
+                            onClick={() => handlePrintKitchen(order.id)}
+                            disabled={!canPrintKitchen}
+                          >
+                            打印
+                          </Button>
+                        </Space>
+                        {statusKey === 'completed' ? (
+                          <Tag color="success">已完成</Tag>
+                        ) : statusKey === 'cancelled' ? (
+                          <Tag>已取消</Tag>
+                        ) : statusKey === 'created' ? (
+                          <Tag color="warning" icon={<WarningOutlined />}>
+                            待支付
+                          </Tag>
+                        ) : advance === 'preparing' ? (
+                          <Button
+                            type="primary"
+                            icon={<PlayCircleOutlined />}
+                            onClick={() => handleAdvance(order.id, 'preparing')}
+                            disabled={!canComplete}
+                          >
+                            开始制作
+                          </Button>
+                        ) : advance === 'completed' ? (
+                          <Button
+                            type="primary"
+                            icon={<CheckOutlined />}
+                            onClick={() => handleAdvance(order.id, 'completed')}
+                            disabled={!canComplete}
+                          >
+                            出单完成
+                          </Button>
+                        ) : null}
+                      </Space>
+                    </div>
+                  </Space>
+                </Card>
+              )
+            })
           )}
         </div>
+
+        <Modal
+          className="manage-modal"
+          title="编辑订单"
+          open={editOpen}
+          onOk={handleEditOk}
+          onCancel={() => setEditOpen(false)}
+          okText="保存"
+          cancelText="取消"
+          okButtonProps={{ disabled: !canEditOrder }}
+          centered
+          width={760}
+        >
+          <Form form={editForm} layout="vertical" style={{ marginTop: 8 }}>
+            <Form.Item name="remark" label="备注">
+              <Input.TextArea rows={3} placeholder="选填" />
+            </Form.Item>
+            <Form.Item label="菜品明细" style={{ marginBottom: 0 }}>
+              <Form.List name="items">
+                {(fields, { add, remove }) => (
+                  <div className="inline-editor-list">
+                    {fields.map(({ key, name, ...rest }) => (
+                      <div key={key} className="inline-editor-row">
+                        <Form.Item
+                          {...rest}
+                          name={[name, 'menu_id']}
+                          label="菜品"
+                          rules={[{ required: true, message: '请选择菜品' }]}
+                        >
+                          <Select
+                            placeholder="选择菜品"
+                            options={menus.map((menu) => ({
+                              label: `${menu.name} ¥${asNumber(menu.price).toFixed(2)}`,
+                              value: menu.id,
+                            }))}
+                          />
+                        </Form.Item>
+                        <Form.Item {...rest} name={[name, 'spec_info']} label="规格备注">
+                          <Input placeholder="如：少辣、加饭" />
+                        </Form.Item>
+                        <Form.Item
+                          {...rest}
+                          name={[name, 'quantity']}
+                          label="数量"
+                          rules={[{ required: true, message: '请输入数量' }]}
+                        >
+                          <InputNumber min={1} style={{ width: '100%' }} />
+                        </Form.Item>
+                        <Button type="text" danger onClick={() => remove(name)}>
+                          删除
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="dashed" onClick={() => add({ quantity: 1 })} block>
+                      + 添加菜品
+                    </Button>
+                  </div>
+                )}
+              </Form.List>
+            </Form.Item>
+          </Form>
+        </Modal>
 
         <div className="workbench-pager-bar">
           <Space style={{ width: '100%', justifyContent: 'space-between' }} align="center">

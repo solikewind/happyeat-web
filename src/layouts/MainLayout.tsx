@@ -35,6 +35,13 @@ type NavItemConfig = {
 const navItems: NavItemConfig[] = [
   { key: '/', icon: <HomeOutlined />, label: '首页', description: '经营概览与快捷入口', permission: 'home:view' },
   {
+    key: '/order-desk',
+    icon: <ShoppingCartOutlined />,
+    label: '点餐台',
+    description: '快速下单与购物车结算',
+    permission: 'order_desk:view',
+  },
+  {
     key: '/workbench',
     icon: <DashboardOutlined />,
     label: '工作台',
@@ -47,13 +54,6 @@ const navItems: NavItemConfig[] = [
     label: '订单管理',
     description: '订单查询与状态跟进',
     permission: 'orders:view',
-  },
-  {
-    key: '/order-desk',
-    icon: <ShoppingCartOutlined />,
-    label: '点餐台',
-    description: '快速下单与购物车结算',
-    permission: 'order_desk:view',
   },
   { key: '/menu', icon: <MenuOutlined />, label: '菜单管理', description: '维护菜品与分类信息', permission: 'menu:view' },
   { key: '/tables', icon: <TableOutlined />, label: '餐桌管理', description: '查看桌台状态和容量', permission: 'table:view' },

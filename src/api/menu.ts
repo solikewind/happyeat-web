@@ -4,7 +4,7 @@
  * 用 axios 的 api 实例（已在 client.ts 里挂好 baseURL 和 token），所以这里只写路径和参数。
  */
 import { api } from './client'
-import type { Menu, MenuCategory, MenuSpec } from './types'
+import type { Menu, MenuCategory, MenuSpec, StoredObject } from './types'
 
 function parseSortField(value: unknown): number | undefined {
   if (typeof value === 'number' && !Number.isNaN(value)) return value
@@ -96,6 +96,11 @@ export interface ListMenusRes {
   total: number
 }
 
+export interface ObjectURLRes {
+  url: string
+  expired_at: string
+}
+
 /** 拉取菜品列表 */
 export async function listMenus(params?: ListMenusParams): Promise<ListMenusRes> {
   const { data } = await api.get<ListMenusRes>('/central/v1/menus', { params })
@@ -107,6 +112,8 @@ export interface CreateMenuBody {
   price: number
   category_id: string
   description?: string
+  /** 对象存储封面 ID（推荐优先传；私有桶场景由后端根据 object_id 回填 image） */
+  object_id?: string
   image?: string
   specs?: MenuSpec[]
 }
@@ -132,4 +139,27 @@ export async function updateMenu(id: string, menu: UpdateMenuBody): Promise<void
 /** 删除菜品 */
 export async function deleteMenu(id: string): Promise<void> {
   await api.delete(`/central/v1/menu/${id}`)
+}
+
+/** 上传文件到对象存储（multipart，字段名 file），返回对象元数据与可访问 URL */
+export async function uploadObject(file: File): Promise<{ object: StoredObject }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const { data } = await api.post<{ object: StoredObject }>('/central/v1/objects/upload', formData, {
+    transformRequest: [
+      (body, headers) => {
+        if (body instanceof FormData) {
+          delete headers['Content-Type']
+        }
+        return body
+      },
+    ],
+  })
+  return data
+}
+
+/** 获取私有桶对象的临时签名 URL */
+export async function getObjectUrl(id: string): Promise<ObjectURLRes> {
+  const { data } = await api.get<ObjectURLRes>(`/central/v1/object/${id}/url`)
+  return data
 }

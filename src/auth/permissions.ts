@@ -64,8 +64,8 @@ export const PERMISSION_DEFINITIONS: Record<string, PermissionDefinition> = {
   'orders:update': {
     key: 'orders:update',
     module: 'orders',
-    label: '更新订单',
-    scene: '订单追加菜品等',
+    label: '编辑订单明细',
+    scene: '订单创建后追加菜品或修改备注',
     apis: [{ method: 'PUT', path: '/central/v1/order/:id' }],
   },
   'orders:update_status': {
@@ -79,7 +79,7 @@ export const PERMISSION_DEFINITIONS: Record<string, PermissionDefinition> = {
     key: 'orders:print_kitchen',
     module: 'orders',
     label: '打印厨房小票',
-    scene: '商鹏后厨打印',
+    scene: '订单管理/工作台手动触发商鹏厨房单',
     apis: [{ method: 'POST', path: '/central/v1/order/:id/print' }],
   },
   'order_desk:view': {
@@ -190,9 +190,34 @@ const ALL_PERMISSIONS: PermissionKey[] = Object.keys(PERMISSION_DEFINITIONS)
 const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
   super_admin: [...ALL_PERMISSIONS],
   manager: [...ALL_PERMISSIONS],
-  cashier: ['home:view', 'orders:view', 'orders:create', 'orders:print_kitchen', 'order_desk:view', 'order_desk:create', 'spec:view'],
-  kitchen: ['home:view', 'workbench:view', 'workbench:complete', 'orders:view', 'orders:print_kitchen', 'spec:view'],
-  waiter: ['home:view', 'orders:view', 'orders:print_kitchen', 'order_desk:view', 'order_desk:create', 'table:view', 'spec:view'],
+  cashier: [
+    'home:view',
+    'orders:view',
+    'orders:create',
+    'orders:update',
+    'orders:print_kitchen',
+    'order_desk:view',
+    'order_desk:create',
+    'spec:view',
+  ],
+  kitchen: [
+    'home:view',
+    'workbench:view',
+    'workbench:complete',
+    'orders:view',
+    'orders:print_kitchen',
+    'spec:view',
+  ],
+  waiter: [
+    'home:view',
+    'orders:view',
+    'orders:update',
+    'orders:print_kitchen',
+    'order_desk:view',
+    'order_desk:create',
+    'table:view',
+    'spec:view',
+  ],
   unknown: [],
 }
 
@@ -292,7 +317,9 @@ function loadRolePermissions(): Record<string, PermissionKey[]> {
     Object.keys(parsed).forEach((role) => {
       const value = parsed[role]
       if (!Array.isArray(value)) return
-      base[role] = value.filter((item): item is PermissionKey => typeof item === 'string' && ALL_PERMISSIONS.includes(item))
+      base[role] = value.filter(
+        (item): item is PermissionKey => typeof item === 'string' && ALL_PERMISSIONS.includes(item),
+      )
     })
     return base
   } catch {

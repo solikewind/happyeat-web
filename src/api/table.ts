@@ -1,8 +1,8 @@
 import { api } from './client'
 import type { Table, TableCategory } from './types'
 
+/** 更新餐桌 body（与后端 UpdateTableReq 一致，id 仅走 URL） */
 export interface UpdateTableBody {
-  id: string
   code: string
   status: string
   capacity: number
@@ -54,8 +54,8 @@ export async function getTable(id: string) {
   return data
 }
 
-export async function updateTable(id: string, table: UpdateTableBody) {
-  await api.put(`/central/v1/table/${id}`, { table })
+export async function updateTable(id: string, body: UpdateTableBody) {
+  await api.put(`/central/v1/table/${id}`, body)
 }
 
 export async function deleteTable(id: string) {

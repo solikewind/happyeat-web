@@ -231,7 +231,6 @@ function TableWorkspace() {
         message.success('创建成功')
       } else {
         await updateTable(editingTableId, {
-          id: editingTableId,
           code: values.code,
           status: values.status,
           capacity: values.capacity,

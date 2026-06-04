@@ -2,13 +2,27 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Empty, Spin, Tooltip, Typography, message } from 'antd'
 import { FullscreenExitOutlined, FullscreenOutlined, ReloadOutlined } from '@ant-design/icons'
 import type { Menu } from '../api/types'
-import { listMenus } from '../api/menu'
+import { getObjectUrl, listMenus } from '../api/menu'
 
 export default function MenuBigScreen() {
   const [menus, setMenus] = useState<Menu[]>([])
   const [loading, setLoading] = useState(true)
   const [now, setNow] = useState(() => new Date())
   const [fs, setFs] = useState(false)
+  const [objectUrlOverrides, setObjectUrlOverrides] = useState<Record<string, string>>({})
+
+  const refreshObjectUrl = useCallback(async (objectId?: string) => {
+    const id = objectId?.trim()
+    if (!id) return undefined
+    try {
+      const data = await getObjectUrl(id)
+      if (!data?.url) return undefined
+      setObjectUrlOverrides((prev) => ({ ...prev, [id]: data.url }))
+      return data.url
+    } catch {
+      return undefined
+    }
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -119,11 +133,22 @@ export default function MenuBigScreen() {
                     {m.image ? (
                       <img
                         className="menu-big-screen-img"
-                        src={m.image}
+                        src={m.object_id && objectUrlOverrides[m.object_id] ? objectUrlOverrides[m.object_id] : m.image}
                         alt={m.name}
                         loading="lazy"
-                        onError={(e) => {
-                          ;(e.target as HTMLImageElement).style.visibility = 'hidden'
+                        onError={async (e) => {
+                          const target = e.target as HTMLImageElement
+                          if (target.dataset.refreshed === '1') {
+                            target.style.visibility = 'hidden'
+                            return
+                          }
+                          target.dataset.refreshed = '1'
+                          const next = await refreshObjectUrl(m.object_id)
+                          if (next) {
+                            target.src = next
+                            return
+                          }
+                          target.style.visibility = 'hidden'
                         }}
                       />
                     ) : null}
