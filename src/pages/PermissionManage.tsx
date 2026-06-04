@@ -108,16 +108,6 @@ export default function PermissionManage() {
   const activeRoleMeta = iamRoles.find((r) => r.role_code === activeRole)
   const isPreset = PRESET_ROLE_CODES.has(activeRole)
 
-  const onToggleDraft = (code: string, checked: boolean) => {
-    setDraftPermissions((prev) => {
-      const set = new Set(prev)
-      if (checked) set.add(code)
-      else set.delete(code)
-      return Array.from(set)
-    })
-    setDirty(true)
-  }
-
   const onSaveRole = async () => {
     if (!activeRole) return
     setSaving(true)
