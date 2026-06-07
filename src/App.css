@@ -2434,10 +2434,16 @@
 }
 
 .manage-table-card .ant-table-pagination,
-.workbench-table-card .ant-table-pagination {
+.workbench-table-card .ant-table-pagination,
+.manage-table-card .manage-table-pagination {
   margin-top: 18px;
   margin-bottom: 0;
   padding-top: 4px;
+}
+
+.manage-table-card .manage-table-pagination {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* 数字 ID：等宽，至少完整显示 16 位（常见 Snowflake 更长时由列宽/横向滚动承接） */

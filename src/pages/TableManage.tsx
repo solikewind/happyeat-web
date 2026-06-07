@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   Button,
   Card,
@@ -7,6 +7,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Pagination,
   Popconfirm,
   Select,
   Space,
@@ -206,6 +207,7 @@ function TableWorkspace() {
   const [editingTableSort, setEditingTableSort] = useState(0)
   const [editingCategorySort, setEditingCategorySort] = useState(0)
   const [tableForm] = Form.useForm()
+  const suppressTableSortPersistRef = useRef(false)
 
   const canSortTables = Boolean(categoryFilter) && !tableNameApplied.trim()
 
@@ -449,12 +451,26 @@ function TableWorkspace() {
     }
   }
 
+  const handleTablePageChange = (nextPage: number) => {
+    setPage(nextPage)
+  }
+
+  const handleTablePageSizeChange = (_current: number, nextSize: number) => {
+    suppressTableSortPersistRef.current = true
+    setPage(1)
+    setPageSize(nextSize)
+    window.setTimeout(() => {
+      suppressTableSortPersistRef.current = false
+    }, 400)
+  }
+
   const onTableDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
+    if (suppressTableSortPersistRef.current) return
     if (!over || String(active.id) === String(over.id)) return
     const oldIndex = sortedTables.findIndex((t) => t.id === String(active.id))
     const newIndex = sortedTables.findIndex((t) => t.id === String(over.id))
-    if (oldIndex < 0 || newIndex < 0) return
+    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return
 
     const reordered = arrayMove(sortedTables, oldIndex, newIndex)
     const sortBase = (page - 1) * pageSize
@@ -643,28 +659,37 @@ function TableWorkspace() {
                   }}
                   components={canSortTables ? { body: { row: TableSortableRow } } : undefined}
                   columns={tableColumns}
-                  pagination={{
-                    current: page,
-                    pageSize,
-                    total,
-                    showSizeChanger: true,
-                    pageSizeOptions: [10, 20, 50, 100],
-                    showTotal: (count) => `共 ${count} 条`,
-                    onChange: (nextPage, nextSize) => {
-                      setPage(nextPage)
-                      if (nextSize && nextSize !== pageSize) setPageSize(nextSize)
-                    },
-                  }}
+                  pagination={false}
                 />
               )
+              const tablePager = (
+                <div className="manage-table-pagination">
+                  <Pagination
+                    current={page}
+                    pageSize={pageSize}
+                    total={total}
+                    showSizeChanger
+                    pageSizeOptions={[10, 20, 50, 100]}
+                    showTotal={(count) => `共 ${count} 条`}
+                    onChange={handleTablePageChange}
+                    onShowSizeChange={handleTablePageSizeChange}
+                  />
+                </div>
+              )
               return canSortTables ? (
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onTableDragEnd}>
-                  <SortableContext items={sortedTables.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                    {tableEl}
-                  </SortableContext>
-                </DndContext>
+                <>
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onTableDragEnd}>
+                    <SortableContext items={sortedTables.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                      {tableEl}
+                    </SortableContext>
+                  </DndContext>
+                  {tablePager}
+                </>
               ) : (
-                tableEl
+                <>
+                  {tableEl}
+                  {tablePager}
+                </>
               )
             })()}
           </Card>

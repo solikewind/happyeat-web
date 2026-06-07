@@ -15,6 +15,7 @@ import {
   Select,
   Segmented,
   Space,
+  Pagination,
   Spin,
   Table,
   Tabs,
@@ -1562,6 +1563,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
   const [objectUrlOverrides, setObjectUrlOverrides] = useState<Record<string, string>>({})
   /** 新建/编辑弹窗打开时，保证 afterOpenChange 能拿到本次点击的分类（避免 state 尚未提交） */
   const categoryEditSnapshotRef = useRef<MenuCategory | null>(null)
+  const suppressMenuSortPersistRef = useRef(false)
 
   const refreshObjectUrl = useCallback(async (objectId?: string) => {
     const id = objectId?.trim()
@@ -1970,12 +1972,26 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
     }
   }
 
+  const handleMenuPageChange = (nextPage: number) => {
+    setPage(nextPage)
+  }
+
+  const handleMenuPageSizeChange = (_current: number, nextSize: number) => {
+    suppressMenuSortPersistRef.current = true
+    setPage(1)
+    setPageSize(nextSize)
+    window.setTimeout(() => {
+      suppressMenuSortPersistRef.current = false
+    }, 400)
+  }
+
   const onMenuDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
+    if (suppressMenuSortPersistRef.current) return
     if (!over || String(active.id) === String(over.id)) return
     const oldIndex = sortedMenus.findIndex((m) => m.id === String(active.id))
     const newIndex = sortedMenus.findIndex((m) => m.id === String(over.id))
-    if (oldIndex < 0 || newIndex < 0) return
+    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return
 
     const reordered = arrayMove(sortedMenus, oldIndex, newIndex)
     const sortBase = (page - 1) * pageSize
@@ -2233,28 +2249,37 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
               }}
               components={canSortMenus ? { body: { row: MenuSortableRow } } : undefined}
               columns={menuColumns}
-              pagination={{
-                current: page,
-                pageSize,
-                total,
-                showSizeChanger: true,
-                pageSizeOptions: [10, 20, 50, 100],
-                showTotal: (count) => `共 ${count} 条`,
-                onChange: (nextPage, nextSize) => {
-                  setPage(nextPage)
-                  if (nextSize && nextSize !== pageSize) setPageSize(nextSize)
-                },
-              }}
+              pagination={false}
             />
           )
+          const menuPager = (
+            <div className="manage-table-pagination">
+              <Pagination
+                current={page}
+                pageSize={pageSize}
+                total={total}
+                showSizeChanger
+                pageSizeOptions={[10, 20, 50, 100]}
+                showTotal={(count) => `共 ${count} 条`}
+                onChange={handleMenuPageChange}
+                onShowSizeChange={handleMenuPageSizeChange}
+              />
+            </div>
+          )
           return canSortMenus ? (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onMenuDragEnd}>
-              <SortableContext items={sortedMenus.map((m) => m.id)} strategy={verticalListSortingStrategy}>
-                {menuTable}
-              </SortableContext>
-            </DndContext>
+            <>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onMenuDragEnd}>
+                <SortableContext items={sortedMenus.map((m) => m.id)} strategy={verticalListSortingStrategy}>
+                  {menuTable}
+                </SortableContext>
+              </DndContext>
+              {menuPager}
+            </>
           ) : (
-            menuTable
+            <>
+              {menuTable}
+              {menuPager}
+            </>
           )
         })()}
           </Card>
