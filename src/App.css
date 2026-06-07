@@ -2672,17 +2672,42 @@
   color: #c2410c;
 }
 
+.workbench-status-pill-icon {
+  margin-right: 4px;
+  font-size: 12px;
+}
+
 .workbench-status-pill-state.is-created {
   background: #fef3c7;
   border-color: #fcd34d;
   color: #92400e;
 }
 
-.workbench-status-pill-state.is-paid,
+.workbench-status-pill-state.is-paid {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
 .workbench-status-pill-state.is-preparing {
   background: #ecfeff;
   border-color: #a5f3fc;
   color: #0f766e;
+}
+
+.workbench-order-card--created {
+  border-color: #fcd34d;
+  box-shadow: 0 0 0 1px rgba(252, 211, 77, 0.35);
+}
+
+.workbench-footer-hint {
+  flex: 1;
+  min-width: 0;
+  margin-right: 8px;
+}
+
+.workbench-footer-remark {
+  color: #64748b;
 }
 
 .workbench-status-pill-state.is-completed {

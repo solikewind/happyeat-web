@@ -1,6 +1,11 @@
-import { api } from './client'
 import type { PermissionKey, RoleKey } from '../auth/permissions'
-import { getRolePermissionConfig, resetRolePermissions, updateRolePermissions } from '../auth/permissions'
+import { applyRemoteRoleConfig, getRolePermissionConfig, resetRolePermissions, updateRolePermissions } from '../auth/permissions'
+import {
+  fetchRolePermissions,
+  listIAMRoles,
+  resetRolePermissions as resetRemoteRolePermissions,
+  updateRolePermissions as updateRemoteRolePermissions,
+} from './rbac'
 
 export type PermissionStorageMode = 'remote' | 'local'
 
@@ -9,15 +14,6 @@ export interface RolePermissionConfig {
   storageMode: PermissionStorageMode
 }
 
-interface RemoteRolePermissionResponse {
-  roles?: Array<{
-    role?: string
-    permissions?: string[]
-  }>
-}
-
-const REMOTE_BASE = '/central/v1/rbac/role-permissions'
-
 function isNotFoundError(error: unknown): boolean {
   const err = error as { response?: { status?: number } }
   return err?.response?.status === 404
@@ -25,32 +21,29 @@ function isNotFoundError(error: unknown): boolean {
 
 export async function fetchRolePermissionConfig(): Promise<RolePermissionConfig> {
   try {
-    const { data } = await api.get<RemoteRolePermissionResponse>(REMOTE_BASE)
-    const local = getRolePermissionConfig()
-    const remoteMap = (data?.roles ?? []).reduce<Partial<Record<RoleKey, PermissionKey[]>>>((acc, item) => {
-      if (!item?.role) return acc
-      const role = item.role as RoleKey
-      acc[role] = (item.permissions ?? []) as PermissionKey[]
-      return acc
-    }, {})
-    const merged = { ...local, ...remoteMap }
-    return { roles: merged, storageMode: 'remote' }
-  } catch (error) {
-    if (!isNotFoundError(error)) {
-      throw error
+    const [matrix, roleList] = await Promise.all([
+      fetchRolePermissions(),
+      listIAMRoles({ current: 1, pageSize: 200 }),
+    ])
+    const roles: Record<RoleKey, PermissionKey[]> = {}
+    for (const row of matrix) {
+      if (row.role) roles[row.role] = (row.permissions ?? []) as PermissionKey[]
     }
+    applyRemoteRoleConfig(matrix, roleList.roles)
+    return { roles: { ...getRolePermissionConfig(), ...roles }, storageMode: 'remote' }
+  } catch (error) {
+    if (!isNotFoundError(error)) throw error
     return { roles: getRolePermissionConfig(), storageMode: 'local' }
   }
 }
 
 export async function saveRolePermissions(role: RoleKey, permissions: PermissionKey[]): Promise<PermissionStorageMode> {
   try {
-    await api.put(`${REMOTE_BASE}/${role}`, { permissions })
+    await updateRemoteRolePermissions(role, permissions)
+    updateRolePermissions(role, permissions)
     return 'remote'
   } catch (error) {
-    if (!isNotFoundError(error)) {
-      throw error
-    }
+    if (!isNotFoundError(error)) throw error
     updateRolePermissions(role, permissions)
     return 'local'
   }
@@ -58,12 +51,11 @@ export async function saveRolePermissions(role: RoleKey, permissions: Permission
 
 export async function resetRolePermissionsConfig(role?: RoleKey): Promise<PermissionStorageMode> {
   try {
-    await api.post(`${REMOTE_BASE}/reset`, role ? { role } : {})
+    await resetRemoteRolePermissions(role)
+    await fetchRolePermissionConfig()
     return 'remote'
   } catch (error) {
-    if (!isNotFoundError(error)) {
-      throw error
-    }
+    if (!isNotFoundError(error)) throw error
     resetRolePermissions(role)
     return 'local'
   }
