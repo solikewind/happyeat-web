@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import {
   Button,
   Card,
@@ -15,7 +15,18 @@ import {
   Typography,
   message,
 } from 'antd'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { DeleteOutlined, EditOutlined, HolderOutlined, PlusOutlined } from '@ant-design/icons'
 import type { Table as TableType, TableCategory } from '../api/types'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -48,6 +59,125 @@ function renderManageModalTitle(title: string, description: string) {
   )
 }
 
+function sortTableCategoriesForDisplay(list: TableCategory[]): TableCategory[] {
+  const withSort = list.map((c) => ({ ...c, sort: c.sort ?? 0 }))
+  return [...withSort].sort((a, b) => {
+    if (a.sort !== b.sort) return a.sort - b.sort
+    const idA = Number.parseInt(String(a.id), 10)
+    const idB = Number.parseInt(String(b.id), 10)
+    if (Number.isFinite(idA) && Number.isFinite(idB) && idA !== idB) return idA - idB
+    return String(a.id).localeCompare(String(b.id))
+  })
+}
+
+function sortTablesForDisplay(list: TableType[]): TableType[] {
+  const withSort = list.map((t) => ({ ...t, sort: t.sort ?? 0 }))
+  return [...withSort].sort((a, b) => {
+    if (a.sort !== b.sort) return a.sort - b.sort
+    const idA = Number.parseInt(String(a.id), 10)
+    const idB = Number.parseInt(String(b.id), 10)
+    if (Number.isFinite(idA) && Number.isFinite(idB) && idA !== idB) return idA - idB
+    return String(a.id).localeCompare(String(b.id))
+  })
+}
+
+type SortableTableCategoryRowProps = {
+  item: TableCategory
+  active: boolean
+  canEditTable: boolean
+  onSelect: () => void
+  onEdit: (record: TableCategory) => void
+  onDelete: (record: TableCategory) => void
+}
+
+function SortableTableCategoryRow({
+  item,
+  active,
+  canEditTable,
+  onSelect,
+  onEdit,
+  onDelete,
+}: SortableTableCategoryRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+    disabled: !canEditTable,
+  })
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 2 : undefined,
+    opacity: isDragging ? 0.92 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`menu-workspace-side-item table-category-side-row${active ? ' menu-workspace-side-item-active' : ''}${isDragging ? ' menu-workspace-side-item-dragging' : ''}`}
+    >
+      <button
+        type="button"
+        className={`menu-workspace-side-drag-handle${!canEditTable ? ' menu-workspace-side-drag-handle-disabled' : ''}`}
+        aria-label="拖动排序"
+        {...(canEditTable ? attributes : {})}
+        {...(canEditTable ? listeners : {})}
+        tabIndex={canEditTable ? 0 : -1}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <HolderOutlined />
+      </button>
+      <button type="button" className="menu-workspace-side-item-btn table-category-side-select" onClick={onSelect}>
+        <span className="menu-workspace-side-item-name">{item.name}</span>
+      </button>
+      <span className="menu-workspace-side-item-actions">
+        <Button type="text" size="small" icon={<EditOutlined />} onClick={() => onEdit(item)} disabled={!canEditTable} />
+        <Popconfirm title="确定删除该分类？" onConfirm={() => onDelete(item)} disabled={!canEditTable}>
+          <Button type="text" size="small" danger icon={<DeleteOutlined />} disabled={!canEditTable} />
+        </Popconfirm>
+      </span>
+    </div>
+  )
+}
+
+const TableRowSortContext = createContext<{
+  setActivatorNodeRef?: (element: HTMLElement | null) => void
+  listeners?: ReturnType<typeof useSortable>['listeners']
+}>({})
+
+function TableDragHandle({ disabled }: { disabled: boolean }) {
+  const ctx = useContext(TableRowSortContext)
+  return (
+    <button
+      type="button"
+      className={`menu-workspace-side-drag-handle${disabled ? ' menu-workspace-side-drag-handle-disabled' : ''}`}
+      aria-label="拖动排序"
+      ref={ctx.setActivatorNodeRef}
+      {...(disabled ? {} : ctx.listeners)}
+      tabIndex={disabled ? -1 : 0}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <HolderOutlined />
+    </button>
+  )
+}
+
+function TableSortableRow(props: React.HTMLAttributes<HTMLTableRowElement> & { 'data-row-key'?: string | number }) {
+  const id = String(props['data-row-key'] ?? '')
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style: CSSProperties = {
+    ...props.style,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    ...(isDragging ? { position: 'relative', zIndex: 9999 } : {}),
+  }
+  const ctx = useMemo(() => ({ setActivatorNodeRef, listeners }), [setActivatorNodeRef, listeners])
+  return (
+    <TableRowSortContext.Provider value={ctx}>
+      <tr {...props} ref={setNodeRef} style={style} {...attributes} />
+    </TableRowSortContext.Provider>
+  )
+}
+
 /** 餐桌工作台：左侧分类、右侧桌台列表（与菜单工作台同一套布局） */
 function TableWorkspace() {
   const { can } = useAuth()
@@ -61,6 +191,7 @@ function TableWorkspace() {
   const [globalTableTotal, setGlobalTableTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   /** 桌号搜索：输入框草稿 vs 已生效条件（回车/按钮搜索后写入） */
   const [tableNameDraft, setTableNameDraft] = useState('')
   const [tableNameApplied, setTableNameApplied] = useState('')
@@ -71,7 +202,11 @@ function TableWorkspace() {
 
   const [tableModalOpen, setTableModalOpen] = useState(false)
   const [editingTableId, setEditingTableId] = useState<string | null>(null)
+  const [editingTableSort, setEditingTableSort] = useState(0)
+  const [editingCategorySort, setEditingCategorySort] = useState(0)
   const [tableForm] = Form.useForm()
+
+  const canSortTables = Boolean(categoryFilter) && !tableNameApplied.trim()
 
   const loadCategories = useCallback(async () => {
     try {
@@ -87,7 +222,7 @@ function TableWorkspace() {
     try {
       const res = await listTables({
         current: page,
-        pageSize: 10,
+        pageSize,
         category: categoryFilter,
         name: tableNameApplied.trim() || undefined,
       })
@@ -100,7 +235,7 @@ function TableWorkspace() {
     } finally {
       setLoading(false)
     }
-  }, [page, categoryFilter, tableNameApplied])
+  }, [page, pageSize, categoryFilter, tableNameApplied])
 
   useEffect(() => {
     loadCategories()
@@ -111,8 +246,15 @@ function TableWorkspace() {
   }, [loadTables])
 
   const categoryMap = useMemo(() => Object.fromEntries(categories.map((item) => [item.id, item.name])), [categories])
+  const sortedCategories = useMemo(() => sortTableCategoriesForDisplay(categories), [categories])
+  const sortedTables = useMemo(() => sortTablesForDisplay(list), [list])
   const idleCount = list.filter((item) => item.status === 'idle').length
   const usingCount = list.filter((item) => item.status === 'using').length
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   const openCategoryCreate = () => {
     if (!canEditTable) {
@@ -120,6 +262,7 @@ function TableWorkspace() {
       return
     }
     setEditingCategoryId(null)
+    setEditingCategorySort(0)
     categoryForm.resetFields()
     setCategoryModalOpen(true)
   }
@@ -130,6 +273,7 @@ function TableWorkspace() {
       return
     }
     setEditingCategoryId(record.id)
+    setEditingCategorySort(record.sort ?? 0)
     categoryForm.setFieldsValue({
       name: record.name,
       description: record.description ?? '',
@@ -148,9 +292,9 @@ function TableWorkspace() {
         message.success('创建成功')
       } else {
         await updateTableCategory(editingCategoryId, {
-          id: editingCategoryId,
           name: values.name,
-          description: values.description || undefined,
+          description: values.description ?? '',
+          sort: editingCategorySort,
         })
         message.success('更新成功')
       }
@@ -187,6 +331,7 @@ function TableWorkspace() {
       return
     }
     setEditingTableId(null)
+    setEditingTableSort(0)
     tableForm.resetFields()
     tableForm.setFieldsValue({
       status: 'idle',
@@ -202,8 +347,10 @@ function TableWorkspace() {
       return
     }
     setEditingTableId(record.id)
+    setEditingTableSort(record.sort ?? 0)
     try {
       const { table } = await getTable(record.id)
+      setEditingTableSort(table.sort ?? 0)
       tableForm.setFieldsValue({
         code: table.code,
         status: table.status,
@@ -226,6 +373,7 @@ function TableWorkspace() {
           status: values.status,
           capacity: values.capacity,
           category_id: values.category_id,
+          sort: 0,
           qr_code: values.qr_code || undefined,
         })
         message.success('创建成功')
@@ -235,6 +383,7 @@ function TableWorkspace() {
           status: values.status,
           capacity: values.capacity,
           category_id: values.category_id,
+          sort: editingTableSort,
           qr_code: values.qr_code || undefined,
         })
         message.success('更新成功')
@@ -272,6 +421,64 @@ function TableWorkspace() {
     }
   }
 
+  const onCategoryDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || String(active.id) === String(over.id)) return
+    const oldIndex = sortedCategories.findIndex((c) => c.id === String(active.id))
+    const newIndex = sortedCategories.findIndex((c) => c.id === String(over.id))
+    if (oldIndex < 0 || newIndex < 0) return
+
+    const reordered = arrayMove(sortedCategories, oldIndex, newIndex)
+    const withSort = reordered.map((c, index) => ({ ...c, sort: index }))
+    const snapshot = [...categories]
+    setCategories(withSort)
+    try {
+      await Promise.all(
+        withSort.map((c) =>
+          updateTableCategory(c.id, {
+            name: c.name,
+            description: c.description ?? '',
+            sort: c.sort ?? 0,
+          }),
+        ),
+      )
+    } catch {
+      message.error('保存分类排序失败')
+      setCategories(snapshot)
+    }
+  }
+
+  const onTableDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || String(active.id) === String(over.id)) return
+    const oldIndex = sortedTables.findIndex((t) => t.id === String(active.id))
+    const newIndex = sortedTables.findIndex((t) => t.id === String(over.id))
+    if (oldIndex < 0 || newIndex < 0) return
+
+    const reordered = arrayMove(sortedTables, oldIndex, newIndex)
+    const sortBase = (page - 1) * pageSize
+    const withSort = reordered.map((t, index) => ({ ...t, sort: sortBase + index }))
+    const snapshot = [...list]
+    setList(withSort)
+    try {
+      await Promise.all(
+        withSort.map((t) =>
+          updateTable(t.id, {
+            code: t.code,
+            status: t.status,
+            capacity: t.capacity,
+            category_id: t.category_id,
+            sort: t.sort ?? 0,
+            qr_code: t.qr_code,
+          }),
+        ),
+      )
+    } catch {
+      message.error('保存餐桌排序失败')
+      setList(snapshot)
+    }
+  }
+
   return (
     <>
       <div className="menu-workspace-layout table-workspace-layout">
@@ -295,31 +502,24 @@ function TableWorkspace() {
             {categories.length === 0 ? (
               <Empty className="menu-workspace-side-empty" description="还没有分类" />
             ) : (
-              categories.map((item) => (
-                <div
-                  key={item.id}
-                  className={`menu-workspace-side-item table-category-side-row${
-                    categoryFilter === item.name ? ' menu-workspace-side-item-active' : ''
-                  }`}
-                >
-                  <button
-                    type="button"
-                    className="menu-workspace-side-item-btn table-category-side-select"
-                    onClick={() => {
-                      setCategoryFilter(item.name)
-                      setPage(1)
-                    }}
-                  >
-                    <span className="menu-workspace-side-item-name">{item.name}</span>
-                  </button>
-                  <span className="menu-workspace-side-item-actions">
-                    <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openCategoryEdit(item)} disabled={!canEditTable} />
-                    <Popconfirm title="确定删除该分类？" onConfirm={() => onCategoryDelete(item)} disabled={!canEditTable}>
-                      <Button type="text" size="small" danger icon={<DeleteOutlined />} disabled={!canEditTable} />
-                    </Popconfirm>
-                  </span>
-                </div>
-              ))
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onCategoryDragEnd}>
+                <SortableContext items={sortedCategories.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+                  {sortedCategories.map((item) => (
+                    <SortableTableCategoryRow
+                      key={item.id}
+                      item={item}
+                      active={categoryFilter === item.name}
+                      canEditTable={canEditTable}
+                      onSelect={() => {
+                        setCategoryFilter(item.name)
+                        setPage(1)
+                      }}
+                      onEdit={openCategoryEdit}
+                      onDelete={onCategoryDelete}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
             )}
           </div>
         </Card>
@@ -372,18 +572,14 @@ function TableWorkspace() {
                 <Tag color="blue">餐桌总数 {total}</Tag>
                 <Tag color="green">本页空闲 {idleCount}</Tag>
                 <Tag color="orange">本页使用中 {usingCount}</Tag>
+                {canSortTables ? <Tag color="cyan">拖动「排序」列调整顺序</Tag> : null}
               </div>
             </div>
-            <Table
-              rowKey="id"
-              loading={loading}
-              dataSource={list}
-              tableLayout="fixed"
-              scroll={{ x: 1000 }}
-              locale={{
-                emptyText: <Empty className="table-empty-state" description="暂无餐桌，先新增一个桌台吧" />,
-              }}
-              columns={[
+            {(() => {
+              const tableColumns = [
+                ...(canSortTables
+                  ? [{ key: 'sort', title: '排序', width: 56, className: 'table-col-sort', render: () => <TableDragHandle disabled={!canEditTable} /> }]
+                  : []),
                 { title: 'ID', dataIndex: 'id', width: 200, className: 'table-col-id' },
                 {
                   title: '桌号',
@@ -433,15 +629,43 @@ function TableWorkspace() {
                     </Space>
                   ),
                 },
-              ]}
-              pagination={{
-                current: page,
-                pageSize: 10,
-                total,
-                showTotal: (count) => `共 ${count} 条`,
-                onChange: setPage,
-              }}
-            />
+              ]
+              const tableEl = (
+                <Table
+                  rowKey="id"
+                  loading={loading}
+                  dataSource={canSortTables ? sortedTables : list}
+                  tableLayout="fixed"
+                  scroll={{ x: canSortTables ? 1056 : 1000 }}
+                  locale={{
+                    emptyText: <Empty className="table-empty-state" description="暂无餐桌，先新增一个桌台吧" />,
+                  }}
+                  components={canSortTables ? { body: { row: TableSortableRow } } : undefined}
+                  columns={tableColumns}
+                  pagination={{
+                    current: page,
+                    pageSize,
+                    total,
+                    showSizeChanger: true,
+                    pageSizeOptions: [10, 20, 50, 100],
+                    showTotal: (count) => `共 ${count} 条`,
+                    onChange: (nextPage, nextSize) => {
+                      setPage(nextPage)
+                      if (nextSize && nextSize !== pageSize) setPageSize(nextSize)
+                    },
+                  }}
+                />
+              )
+              return canSortTables ? (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onTableDragEnd}>
+                  <SortableContext items={sortedTables.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                    {tableEl}
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                tableEl
+              )
+            })()}
           </Card>
         </div>
       </div>

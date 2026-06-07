@@ -17,9 +17,10 @@ import {
   message,
 } from 'antd'
 import { EditOutlined, EyeOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons'
-import type { Order, Menu, Table as TTable } from '../api/types'
+import type { Menu, MenuCategory, Order, Table as TTable } from '../api/types'
 import { createOrder, getOrder, listOrders, printOrderKitchen, updateOrder, updateOrderStatus } from '../api/order'
-import { listMenus } from '../api/menu'
+import { listMenuCategories, listMenus } from '../api/menu'
+import { sortOrderItemsForDisplay } from '../utils/orderItemDisplaySort'
 import { listTables } from '../api/table'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -58,6 +59,7 @@ export default function OrderManage() {
   const [editOpen, setEditOpen] = useState(false)
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
   const [menus, setMenus] = useState<Menu[]>([])
+  const [categories, setCategories] = useState<MenuCategory[]>([])
   const [tables, setTables] = useState<TTable[]>([])
   const [form] = Form.useForm()
   const [editForm] = Form.useForm()
@@ -108,8 +110,19 @@ export default function OrderManage() {
 
   const openDetail = async (id: string) => {
     try {
-      const { order } = await getOrder(id)
-      setDetailOrder(order)
+      const [{ order }, menuRes, catRes] = await Promise.all([
+        getOrder(id),
+        listMenus({ current: 1, pageSize: 500 }),
+        listMenuCategories({ current: 1, pageSize: 500 }),
+      ])
+      const menuList = Array.isArray(menuRes?.menus) ? menuRes.menus : []
+      const categoryList = Array.isArray(catRes?.categories) ? catRes.categories : []
+      setMenus(menuList)
+      setCategories(categoryList)
+      setDetailOrder({
+        ...order,
+        items: sortOrderItemsForDisplay(order.items ?? [], menuList, categoryList),
+      })
       setDetailOpen(true)
     } catch {
       message.error('获取订单详情失败')
@@ -671,7 +684,7 @@ export default function OrderManage() {
                   rowKey={(item, index) => `${item.menu_name}-${index}`}
                   size="small"
                   pagination={false}
-                  dataSource={detailOrder.items}
+                  dataSource={sortOrderItemsForDisplay(detailOrder.items ?? [], menus, categories)}
                   columns={[
                     { title: '菜品', dataIndex: 'menu_name', ellipsis: true },
                     {

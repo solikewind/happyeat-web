@@ -3994,9 +3994,51 @@ button.menu-workspace-side-item {
   }
 }
 
-/* 餐桌工作台：侧栏分类行无拖拽柄，主按钮占满剩余宽度 */
+.menu-sortable-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.menu-sortable-list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.menu-sortable-list-row-dragging {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.menu-sortable-list-row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-sortable-list-row-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-sortable-list-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* 餐桌工作台：侧栏分类行（含拖拽柄） */
 .table-category-side-row.menu-workspace-side-item {
-  padding-left: 8px;
+  padding-left: 4px;
 }
 
 .table-category-side-select.menu-workspace-side-item-btn {

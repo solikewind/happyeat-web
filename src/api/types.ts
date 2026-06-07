@@ -11,11 +11,15 @@ export interface LoginReply {
 }
 
 /** 菜单分类（与后端 MenuCategory 一致） */
+/** dish=菜品（订单/打印靠前） drink=酒水饮料（靠后） */
+export type MenuCategoryKind = 'dish' | 'drink'
+
 export interface MenuCategory {
   id: string
   name: string
   description?: string
   sort?: number
+  kind?: MenuCategoryKind
   created_at?: string
   updated_at?: string
 }
@@ -38,6 +42,7 @@ export interface Menu {
   name: string
   price: number
   category_id: string
+  sort?: number
   description?: string
   /** 封面图对象存储记录 ID（与 image URL 对应，上传接口返回） */
   object_id?: string
@@ -95,6 +100,7 @@ export interface TableCategory {
   id: string
   name: string
   description?: string
+  sort?: number
   create_at?: number
 }
 
@@ -104,12 +110,14 @@ export interface Table {
   status: string
   capacity: number
   category_id: string
+  sort?: number
   qr_code?: string
   create_at: number
   update_at: number
 }
 
 export interface OrderItem {
+  menu_id?: string
   menu_name: string
   quantity: number
   unit_price: number

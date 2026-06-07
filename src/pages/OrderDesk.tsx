@@ -7,6 +7,7 @@ import { listTables } from '../api/table'
 import { createOrder } from '../api/order'
 import { useSTT } from '../hooks/useSTT'
 import { useTTS } from '../hooks/useTTS'
+import { sortMenuCategoriesForDisplay, sortMenusForDisplay } from '../utils/menuDisplaySort'
 import { matchMenuByText, parseOrderItems } from '../utils/menuMatcher'
 import { useOrderCart } from '../contexts/OrderCartContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -114,11 +115,14 @@ export default function OrderDesk() {
   const cartItemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart])
   const selectedTable = useMemo(() => tables.find((item) => item.id === tableId), [tableId, tables])
 
+  const sortedCategories = useMemo(() => sortMenuCategoriesForDisplay(categories), [categories])
+
   const filteredMenus = useMemo(() => {
     const q = menuSearchKeyword.trim().toLowerCase()
-    if (!q) return menus
-    return menus.filter((m) => m.name.toLowerCase().includes(q))
-  }, [menus, menuSearchKeyword])
+    const matched = q ? menus.filter((m) => m.name.toLowerCase().includes(q)) : menus
+    const groupByCategory = activeCategory === 'all' || Boolean(q)
+    return sortMenusForDisplay(matched, categories, { groupByCategory })
+  }, [menus, categories, menuSearchKeyword, activeCategory])
 
   useEffect(() => {
     loadCategories()
@@ -344,7 +348,7 @@ export default function OrderDesk() {
     }
   }
 
-  const tabItems = [{ key: 'all', label: '全部' }, ...categories.map((c) => ({ key: c.name, label: c.name }))]
+  const tabItems = [{ key: 'all', label: '全部' }, ...sortedCategories.map((c) => ({ key: c.name, label: c.name }))]
 
   return (
     <div className="order-desk-layout">

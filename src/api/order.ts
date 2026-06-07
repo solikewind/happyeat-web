@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { Order } from './types'
+import type { Order, OrderItem } from './types'
 import { normOrderStatus, toApiOrderStatus } from '../utils/orderStatus'
 
 export interface CreateOrderItem {
@@ -15,6 +15,14 @@ export interface UpdateOrderItem {
   spec_info?: string
 }
 
+function normalizeOrderItem(item: OrderItem): OrderItem {
+  const raw = item as OrderItem & { menu_id?: string | number }
+  return {
+    ...item,
+    menu_id: raw.menu_id != null && String(raw.menu_id) !== '' ? String(raw.menu_id) : undefined,
+  }
+}
+
 /** 统一为前端使用的小写状态，避免各处再做大写兼容 */
 function normalizeOrder(order: Order): Order {
   const s = normOrderStatus(order.status)
@@ -22,6 +30,7 @@ function normalizeOrder(order: Order): Order {
     ...order,
     status: s || order.status,
     actual_amount: order.actual_amount ?? 0,
+    items: Array.isArray(order.items) ? order.items.map(normalizeOrderItem) : order.items,
   }
 }
 

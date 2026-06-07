@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Card, Empty, Form, Input, InputNumber, Modal, Pagination, Select, Space, Spin, Tag, Tooltip, Typography, message } from 'antd'
 import { CheckOutlined, ClockCircleOutlined, EditOutlined, LeftOutlined, PrinterOutlined, RightOutlined } from '@ant-design/icons'
-import type { Menu, Order } from '../api/types'
+import type { Menu, MenuCategory, Order } from '../api/types'
 import { listWorkbenchOrders, printOrderKitchen, updateOrder, updateOrderStatus } from '../api/order'
-import { listMenus } from '../api/menu'
+import { listMenuCategories, listMenus } from '../api/menu'
+import { sortOrderItemsForDisplay } from '../utils/orderItemDisplaySort'
 import { useAuth } from '../contexts/AuthContext'
 import { normOrderStatus, ORDER_STATUS_LABEL, ORDER_TYPE_LABEL } from '../utils/orderStatus'
 
@@ -31,6 +32,7 @@ export default function Workbench() {
   const [editOpen, setEditOpen] = useState(false)
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
   const [menus, setMenus] = useState<Menu[]>([])
+  const [categories, setCategories] = useState<MenuCategory[]>([])
   const [editForm] = Form.useForm()
   const [printingId, setPrintingId] = useState<string | null>(null)
 
@@ -54,6 +56,21 @@ export default function Workbench() {
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [menuRes, catRes] = await Promise.all([
+          listMenus({ current: 1, pageSize: 500 }),
+          listMenuCategories({ current: 1, pageSize: 500 }),
+        ])
+        setMenus(Array.isArray(menuRes?.menus) ? menuRes.menus : [])
+        setCategories(Array.isArray(catRes?.categories) ? catRes.categories : [])
+      } catch {
+        // 排序降级为接口返回顺序
+      }
+    })()
+  }, [])
 
   const handlePrintKitchen = async (id: string) => {
     if (!canPrintKitchen) {
@@ -281,7 +298,11 @@ export default function Workbench() {
 
                   <div className="workbench-order-items">
                     {(() => {
-                      const items = Array.isArray(order.items) ? order.items : []
+                      const items = sortOrderItemsForDisplay(
+                        Array.isArray(order.items) ? order.items : [],
+                        menus,
+                        categories,
+                      )
                       const isExpanded = expandedOrderIds.has(order.id)
                       const visibleItems = isExpanded ? items : items.slice(0, WORKBENCH_ITEMS_PREVIEW_COUNT)
                       const hiddenCount = Math.max(0, items.length - visibleItems.length)

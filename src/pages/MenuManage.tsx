@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   Badge,
   Button,
@@ -47,6 +47,7 @@ import {
 import type { CategorySpec, Menu, MenuCategory, MenuSpec, SpecGroup, SpecItem } from '../api/types'
 import { useAuth } from '../contexts/AuthContext'
 import { appPath } from '../utils/appPath'
+import { sortMenuCategoriesForDisplay, sortMenusForDisplay } from '../utils/menuDisplaySort'
 import {
   createMenu,
   createMenuCategory,
@@ -456,6 +457,7 @@ function CategorySpecTab({ preferredCategoryId }: { preferredCategoryId?: string
             name: c.name,
             description: c.description ?? '',
             sort: c.sort ?? 0,
+            kind: c.kind ?? 'dish',
           }),
         ),
       )
@@ -1281,15 +1283,16 @@ type CustomMenuSpecGroupFormValue = {
   items?: CustomMenuSpecItemFormValue[]
 }
 
-function sortMenuCategoriesForDisplay(list: MenuCategory[]): MenuCategory[] {
-  const withSort = list.map((c) => ({ ...c, sort: c.sort ?? 0 }))
-  return [...withSort].sort((a, b) => {
-    if (a.sort !== b.sort) return a.sort - b.sort
-    const idA = Number.parseInt(String(a.id), 10)
-    const idB = Number.parseInt(String(b.id), 10)
-    if (Number.isFinite(idA) && Number.isFinite(idB) && idA !== idB) return idA - idB
-    return String(a.id).localeCompare(String(b.id))
-  })
+function buildMenuUpdateBody(menu: Menu, sort: number) {
+  const objectId = menu.object_id?.trim()
+  return {
+    name: menu.name,
+    price: menu.price,
+    category_id: menu.category_id,
+    description: menu.description,
+    sort,
+    ...(objectId ? { object_id: objectId } : menu.image ? { image: menu.image } : {}),
+  }
 }
 
 type SortableMenuCategoryRowProps = {
@@ -1299,6 +1302,45 @@ type SortableMenuCategoryRowProps = {
   onSelect: () => void
   onEdit: (record: MenuCategory) => void
   onDelete: (record: MenuCategory) => void
+}
+
+const MenuRowSortContext = createContext<{
+  setActivatorNodeRef?: (element: HTMLElement | null) => void
+  listeners?: ReturnType<typeof useSortable>['listeners']
+}>({})
+
+function MenuDragHandle({ disabled }: { disabled: boolean }) {
+  const ctx = useContext(MenuRowSortContext)
+  return (
+    <button
+      type="button"
+      className={`menu-workspace-side-drag-handle${disabled ? ' menu-workspace-side-drag-handle-disabled' : ''}`}
+      aria-label="拖动排序"
+      ref={ctx.setActivatorNodeRef}
+      {...(disabled ? {} : ctx.listeners)}
+      tabIndex={disabled ? -1 : 0}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <HolderOutlined />
+    </button>
+  )
+}
+
+function MenuSortableRow(props: React.HTMLAttributes<HTMLTableRowElement> & { 'data-row-key'?: string | number }) {
+  const id = String(props['data-row-key'] ?? '')
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style: CSSProperties = {
+    ...props.style,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    ...(isDragging ? { position: 'relative', zIndex: 9999 } : {}),
+  }
+  const ctx = useMemo(() => ({ setActivatorNodeRef, listeners }), [setActivatorNodeRef, listeners])
+  return (
+    <MenuRowSortContext.Provider value={ctx}>
+      <tr {...props} ref={setNodeRef} style={style} {...attributes} />
+    </MenuRowSortContext.Provider>
+  )
 }
 
 function SortableMenuCategoryRow({
@@ -1500,11 +1542,12 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>()
   const [nameSearch, setNameSearch] = useState<string | undefined>()
-  const pageSize = 10
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingMenuSort, setEditingMenuSort] = useState(0)
   const [form] = Form.useForm()
   const selectedCategoryId = Form.useWatch('category_id', form)
   const coverImageUrlWatch = Form.useWatch('image', form) as string | undefined
@@ -1537,6 +1580,8 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
     const res = await listMenuCategories({ current: 1, pageSize: 200 })
     setCategories(asArray(res?.categories))
   }, [])
+
+  const canSortMenus = Boolean(categoryFilter) && !nameSearch
 
   const loadMenus = useCallback(async () => {
     setLoading(true)
@@ -1618,6 +1663,10 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
 
   const categoryMap = Object.fromEntries(categories.map((item) => [item.id, item.name]))
   const sortedCategories = useMemo(() => sortMenuCategoriesForDisplay(categories), [categories])
+  const sortedMenus = useMemo(
+    () => sortMenusForDisplay(menus, categories, { groupByCategory: !categoryFilter }),
+    [menus, categories, categoryFilter],
+  )
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -1693,6 +1742,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
       return
     }
     setEditingId(null)
+    setEditingMenuSort(0)
     form.resetFields()
     form.setFieldValue('custom_spec_groups', [])
     setSelectedCategorySpecIds([])
@@ -1708,8 +1758,10 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
       return
     }
     setEditingId(record.id)
+    setEditingMenuSort(record.sort ?? 0)
     try {
       const { menu } = await getMenu(record.id)
+      setEditingMenuSort(menu.sort ?? 0)
       await Promise.all([loadCategorySpecs(menu.category_id), loadLibrarySpecs()])
       const initCategorySpecIds = asArray(menu.specs)
         .filter((item) => item.source === 'category' || (!item.source && Boolean(item.category_spec_id)))
@@ -1767,6 +1819,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
           name: values.name,
           price: normalizedPrice,
           category_id: String(values.category_id),
+          sort: 0,
           description: values.description || undefined,
           object_id: objectId,
           image: imageForSubmit,
@@ -1778,6 +1831,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
           name: values.name,
           price: normalizedPrice,
           category_id: String(values.category_id),
+          sort: editingMenuSort,
           description: values.description || undefined,
           object_id: objectId,
           image: imageForSubmit,
@@ -1849,6 +1903,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
           name: values.name,
           description: values.description || undefined,
           sort: sortNum,
+          kind: values.kind ?? 'dish',
         })
         message.success('创建成功')
       } else {
@@ -1856,6 +1911,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
           name: values.name,
           description: values.description ?? '',
           sort: sortNum,
+          kind: values.kind ?? 'dish',
         })
         message.success('更新成功')
       }
@@ -1903,12 +1959,33 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
             name: c.name,
             description: c.description ?? '',
             sort: c.sort ?? 0,
+            kind: c.kind ?? 'dish',
           }),
         ),
       )
     } catch {
       message.error('保存排序失败')
       setCategories(snapshot)
+    }
+  }
+
+  const onMenuDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || String(active.id) === String(over.id)) return
+    const oldIndex = sortedMenus.findIndex((m) => m.id === String(active.id))
+    const newIndex = sortedMenus.findIndex((m) => m.id === String(over.id))
+    if (oldIndex < 0 || newIndex < 0) return
+
+    const reordered = arrayMove(sortedMenus, oldIndex, newIndex)
+    const sortBase = (page - 1) * pageSize
+    const withSort = reordered.map((m: Menu, index: number) => ({ ...m, sort: sortBase + index }))
+    const snapshot = [...menus]
+    setMenus(withSort)
+    try {
+      await Promise.all(withSort.map((m: Menu) => updateMenu(m.id, buildMenuUpdateBody(m, m.sort ?? 0))))
+    } catch {
+      message.error('保存菜品排序失败')
+      setMenus(snapshot)
     }
   }
 
@@ -2018,18 +2095,14 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
                 <Tag color="purple">本页显示 {menus.length}</Tag>
                 <Tag color="orange">本页缺图 {menusWithoutImage}</Tag>
                 <Tag color="gold">本页有规格 {menusWithSpecs}</Tag>
+                {canSortMenus ? <Tag color="cyan">拖动「排序」列调整顺序</Tag> : null}
               </div>
             </div>
-        <Table
-          rowKey="id"
-          loading={loading}
-          dataSource={menus}
-          tableLayout="fixed"
-          scroll={{ x: 1360 }}
-          locale={{
-            emptyText: <Empty className="table-empty-state" description="暂无菜品，先新增一道菜品吧" />,
-          }}
-          columns={[
+        {(() => {
+          const menuColumns = [
+            ...(canSortMenus
+              ? [{ key: 'sort', title: '排序', width: 56, className: 'table-col-sort', render: () => <MenuDragHandle disabled={!canEditMenu} /> }]
+              : []),
             { title: 'ID', dataIndex: 'id', width: 160, className: 'table-col-id' },
             {
               title: '图片',
@@ -2146,16 +2219,43 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
                 </Space>
               ),
             },
-          ]}
-          pagination={{
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: false,
-            showTotal: (count) => `共 ${count} 条`,
-            onChange: setPage,
-          }}
-        />
+          ]
+          const menuTable = (
+            <Table
+              rowKey="id"
+              loading={loading}
+              dataSource={canSortMenus ? sortedMenus : menus}
+              tableLayout="fixed"
+              scroll={{ x: canSortMenus ? 1416 : 1360 }}
+              locale={{
+                emptyText: <Empty className="table-empty-state" description="暂无菜品，先新增一道菜品吧" />,
+              }}
+              components={canSortMenus ? { body: { row: MenuSortableRow } } : undefined}
+              columns={menuColumns}
+              pagination={{
+                current: page,
+                pageSize,
+                total,
+                showSizeChanger: true,
+                pageSizeOptions: [10, 20, 50, 100],
+                showTotal: (count) => `共 ${count} 条`,
+                onChange: (nextPage, nextSize) => {
+                  setPage(nextPage)
+                  if (nextSize && nextSize !== pageSize) setPageSize(nextSize)
+                },
+              }}
+            />
+          )
+          return canSortMenus ? (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onMenuDragEnd}>
+              <SortableContext items={sortedMenus.map((m) => m.id)} strategy={verticalListSortingStrategy}>
+                {menuTable}
+              </SortableContext>
+            </DndContext>
+          ) : (
+            menuTable
+          )
+        })()}
           </Card>
         </div>
       </div>
@@ -2177,6 +2277,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
               name: record.name,
               description: record.description ?? '',
               sort: record.sort ?? 0,
+              kind: record.kind ?? 'dish',
             })
             categoryEditSnapshotRef.current = null
             return
@@ -2184,7 +2285,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
           categoryForm.resetFields()
           const sorts = categories.map((c) => c.sort ?? 0)
           const maxSort = sorts.length ? Math.max(...sorts) : -1
-          categoryForm.setFieldsValue({ sort: maxSort + 1 })
+          categoryForm.setFieldsValue({ sort: maxSort + 1, kind: 'dish' })
         }}
         centered
         width={480}
@@ -2217,12 +2318,25 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
       >
         <Form form={categoryForm} layout="vertical" style={{ marginTop: 12 }}>
           <Typography.Text className="modal-note">
-            建议分类名称简短清晰，排序越小越靠前。
+            建议分类名称简短清晰；分类列表与点餐台按「排序」展示。展示类型仅影响下单后订单明细与厨房打印时的先后。
           </Typography.Text>
           <div className="manage-form-card">
             <span className="manage-form-card-title">分类信息</span>
             <Form.Item name="name" label="分类名称" rules={[{ required: true, message: '请输入分类名称' }]}>
               <Input placeholder="如：热菜" />
+            </Form.Item>
+            <Form.Item
+              name="kind"
+              label="展示类型"
+              extra="酒水饮料类在订单详情与厨房单中排在所有菜品后面"
+              initialValue="dish"
+            >
+              <Select
+                options={[
+                  { value: 'dish', label: '菜品' },
+                  { value: 'drink', label: '酒水饮料' },
+                ]}
+              />
             </Form.Item>
             <Form.Item name="description" label="描述">
               <Input.TextArea rows={3} placeholder="选填" />
