@@ -1,9 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-<<<<<<< HEAD
-import { Button, Card, Empty, Form, Input, InputNumber, Modal, Pagination, Select, Space, Spin, Tag, Tooltip, Typography, message } from 'antd'
-import { CheckOutlined, ClockCircleOutlined, EditOutlined, LeftOutlined, PrinterOutlined, RightOutlined } from '@ant-design/icons'
-import type { Menu, MenuCategory, Order } from '../api/types'
-=======
 import {
   Button,
   Card,
@@ -31,8 +26,7 @@ import {
   RightOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
-import type { Menu, Order } from '../api/types'
->>>>>>> 03433d5b9922afea843aef15476f10012bff3db0
+import type { Menu, MenuCategory, Order } from '../api/types'
 import { listWorkbenchOrders, printOrderKitchen, updateOrder, updateOrderStatus } from '../api/order'
 import { listMenuCategories, listMenus } from '../api/menu'
 import { sortOrderItemsForDisplay } from '../utils/orderItemDisplaySort'
@@ -96,7 +90,6 @@ export default function Workbench() {
     load()
   }, [load])
 
-<<<<<<< HEAD
   useEffect(() => {
     void (async () => {
       try {
@@ -111,7 +104,7 @@ export default function Workbench() {
       }
     })()
   }, [])
-=======
+
   const handleAdvance = async (id: string, next: 'preparing' | 'completed') => {
     if (!canComplete) {
       message.warning('当前账号没有出单权限')
@@ -127,7 +120,6 @@ export default function Workbench() {
       )
     }
   }
->>>>>>> 03433d5b9922afea843aef15476f10012bff3db0
 
   const handlePrintKitchen = async (id: string) => {
     if (!canPrintKitchen) {
@@ -369,25 +361,16 @@ export default function Workbench() {
                       </span>
                     </div>
 
-<<<<<<< HEAD
-                  <div className="workbench-order-items">
-                    {(() => {
-                      const items = sortOrderItemsForDisplay(
-                        Array.isArray(order.items) ? order.items : [],
-                        menus,
-                        categories,
-                      )
-                      const isExpanded = expandedOrderIds.has(order.id)
-                      const visibleItems = isExpanded ? items : items.slice(0, WORKBENCH_ITEMS_PREVIEW_COUNT)
-                      const hiddenCount = Math.max(0, items.length - visibleItems.length)
-=======
                     <div className="workbench-order-items">
                       {(() => {
-                        const items = Array.isArray(order.items) ? order.items : []
+                        const items = sortOrderItemsForDisplay(
+                          Array.isArray(order.items) ? order.items : [],
+                          menus,
+                          categories,
+                        )
                         const isExpanded = expandedOrderIds.has(order.id)
                         const visibleItems = isExpanded ? items : items.slice(0, WORKBENCH_ITEMS_PREVIEW_COUNT)
                         const hiddenCount = Math.max(0, items.length - visibleItems.length)
->>>>>>> 03433d5b9922afea843aef15476f10012bff3db0
 
                         return (
                           <>
