@@ -24,6 +24,7 @@ import {
   Upload,
   message,
 } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
 import {
   closestCenter,
   DndContext,
@@ -2099,7 +2100,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
               </div>
             </div>
         {(() => {
-          const menuColumns = [
+          const menuColumns: ColumnsType<Menu> = [
             ...(canSortMenus
               ? [{ key: 'sort', title: '排序', width: 56, className: 'table-col-sort', render: () => <MenuDragHandle disabled={!canEditMenu} /> }]
               : []),
@@ -2206,7 +2207,7 @@ function MenuListTab({ onOpenCategorySpecs }: { onOpenCategorySpecs?: (categoryI
               width: 160,
               fixed: 'right',
               className: 'table-col-actions',
-              render: (_, record: Menu) => (
+              render: (_value: unknown, record: Menu) => (
                 <Space>
                   <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} disabled={!canEditMenu}>
                     编辑

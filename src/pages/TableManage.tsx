@@ -15,6 +15,7 @@ import {
   Typography,
   message,
 } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
 import {
   closestCenter,
   DndContext,
@@ -576,7 +577,7 @@ function TableWorkspace() {
               </div>
             </div>
             {(() => {
-              const tableColumns = [
+              const tableColumns: ColumnsType<TableType> = [
                 ...(canSortTables
                   ? [{ key: 'sort', title: '排序', width: 56, className: 'table-col-sort', render: () => <TableDragHandle disabled={!canEditTable} /> }]
                   : []),
@@ -616,7 +617,7 @@ function TableWorkspace() {
                   width: 168,
                   fixed: 'right',
                   className: 'table-col-actions',
-                  render: (_, record: TableType) => (
+                  render: (_value: unknown, record: TableType) => (
                     <Space>
                       <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openTableEdit(record)} disabled={!canEditTable}>
                         编辑
