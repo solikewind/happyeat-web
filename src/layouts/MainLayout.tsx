@@ -2,6 +2,7 @@ import { useState, type SetStateAction } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Avatar, Breadcrumb, Button, Drawer, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
 import {
+  BarChartOutlined,
   DashboardOutlined,
   HomeOutlined,
   LayoutOutlined,
@@ -54,6 +55,13 @@ const navItems: NavItemConfig[] = [
     label: '订单管理',
     description: '订单查询与状态跟进',
     permission: 'orders:view',
+  },
+  {
+    key: '/sales-stats',
+    icon: <BarChartOutlined />,
+    label: '订单统计',
+    description: '营业额、订单量与菜品销量',
+    permission: 'stats:view',
   },
   { key: '/menu', icon: <MenuOutlined />, label: '菜单管理', description: '维护菜品与分类信息', permission: 'menu:view' },
   { key: '/tables', icon: <TableOutlined />, label: '餐桌管理', description: '查看桌台状态和容量', permission: 'table:view' },

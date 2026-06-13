@@ -164,6 +164,17 @@ export const PERMISSION_DEFINITIONS: Record<string, PermissionDefinition> = {
     scene: '规格组/项维护',
     apis: [{ method: 'POST', path: '/central/v1/spec/group' }],
   },
+  'stats:view': {
+    key: 'stats:view',
+    module: 'stats',
+    label: '查看订单统计',
+    scene: '营业额、订单量与菜品销量',
+    apis: [
+      { method: 'GET', path: '/central/v1/stats/daily' },
+      { method: 'GET', path: '/central/v1/stats/daily/overview' },
+      { method: 'GET', path: '/central/v1/stats/menus' },
+    ],
+  },
 }
 
 const MODULE_LABELS: Record<string, string> = {
@@ -175,6 +186,7 @@ const MODULE_LABELS: Record<string, string> = {
   menu: '菜单',
   table: '餐桌',
   spec: '规格',
+  stats: '订单统计',
 }
 
 export function permissionModuleLabel(module: string): string {
@@ -198,6 +210,7 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     'orders:print_kitchen',
     'order_desk:view',
     'order_desk:create',
+    'stats:view',
     'spec:view',
   ],
   kitchen: [
@@ -317,9 +330,15 @@ function loadRolePermissions(): Record<string, PermissionKey[]> {
     Object.keys(parsed).forEach((role) => {
       const value = parsed[role]
       if (!Array.isArray(value)) return
-      base[role] = value.filter(
+      const cached = value.filter(
         (item): item is PermissionKey => typeof item === 'string' && ALL_PERMISSIONS.includes(item),
       )
+      const defaults = DEFAULT_ROLE_PERMISSIONS[role as RoleKey] ?? []
+      if (defaults.length === ALL_PERMISSIONS.length) {
+        base[role] = [...ALL_PERMISSIONS]
+        return
+      }
+      base[role] = Array.from(new Set([...cached, ...defaults]))
     })
     return base
   } catch {

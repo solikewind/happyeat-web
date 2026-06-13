@@ -658,6 +658,21 @@
   border-top: 3px solid #3b82f6 !important;
 }
 
+.sales-stats-page .sales-stats-toolbar {
+  border-radius: 18px;
+}
+
+.sales-stats-page .sales-stats-today-card {
+  border-radius: 18px;
+  background: linear-gradient(135deg, #1677ff 0%, #4096ff 100%);
+  color: #fff;
+}
+
+.sales-stats-page .sales-stats-today-card .ant-typography,
+.sales-stats-page .sales-stats-today-card .ant-statistic-content {
+  color: #fff !important;
+}
+
 .home-stat-card .ant-card-body,
 .home-entry-card .ant-card-body {
   padding: 22px;

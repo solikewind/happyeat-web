@@ -2,12 +2,16 @@ import { Suspense, lazy, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Button, ConfigProvider, Result, Spin, theme as antdTheme } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
+import dayjs from 'dayjs'
+import 'dayjs/locale/zh-cn'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider, useThemeMode } from './contexts/ThemeContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { normalizeRole, type PermissionKey } from './auth/permissions'
 import MainLayout from './layouts/MainLayout'
 import './App.css'
+
+dayjs.locale('zh-cn')
 
 const Login = lazy(() => import('./pages/Login'))
 const Home = lazy(() => import('./pages/Home'))
@@ -19,6 +23,7 @@ const OrderDesk = lazy(() => import('./pages/OrderDesk'))
 const Workbench = lazy(() => import('./pages/Workbench'))
 const PermissionManage = lazy(() => import('./pages/PermissionManage'))
 const MenuBigScreen = lazy(() => import('./pages/MenuBigScreen'))
+const SalesStats = lazy(() => import('./pages/SalesStats'))
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAuth()
@@ -146,6 +151,14 @@ function AppRoutes() {
             element={
               <PermissionRoute permission="permission:view">
                 <PermissionManage />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="sales-stats"
+            element={
+              <PermissionRoute permission="stats:view">
+                <SalesStats />
               </PermissionRoute>
             }
           />

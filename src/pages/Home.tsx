@@ -6,6 +6,7 @@ import {
   BulbOutlined,
   DashboardOutlined,
   FundProjectionScreenOutlined,
+  BarChartOutlined,
   LayoutOutlined,
   MenuOutlined,
   ShoppingCartOutlined,
@@ -66,6 +67,14 @@ const entryGroups: EntryGroup[] = [
         description: '检索、改状态、处理异常，订单全链路可视。',
         icon: <ShoppingOutlined />,
         accent: 'blue',
+      },
+      {
+        path: '/sales-stats',
+        title: '订单统计',
+        description: '今日/近7天营业额、订单量与菜品销量明细。',
+        icon: <BarChartOutlined />,
+        accent: 'violet',
+        permission: 'stats:view',
       },
     ],
   },
@@ -134,11 +143,7 @@ const formatDayKey = (date: Date) => {
   return `${year}-${month}-${day}`
 }
 
-const formatDayLabel = (date: Date) => {
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${month}/${day}`
-}
+const formatDayLabel = (date: Date) => `${date.getMonth() + 1}月${date.getDate()}日`
 
 const createHistorySeed = () => {
   const startDate = new Date()

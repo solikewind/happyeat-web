@@ -19,6 +19,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "antd": "^6.3.0",
     "axios": "^1.13.5",
+    "dayjs": "^1.11.21",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",
