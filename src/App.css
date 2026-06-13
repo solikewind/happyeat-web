@@ -662,6 +662,79 @@
   border-radius: 18px;
 }
 
+.sales-stats-page .sales-stats-range-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+}
+
+.sales-stats-page .sales-stats-range-link-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sales-stats-page .sales-stats-range-sep {
+  margin: 0 10px;
+  color: rgba(100, 116, 139, 0.35);
+  font-size: 13px;
+  user-select: none;
+}
+
+.sales-stats-page .sales-stats-range-link {
+  border: none;
+  background: transparent;
+  padding: 4px 2px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: color 0.15s ease;
+}
+
+.sales-stats-page .sales-stats-range-link:hover {
+  color: #1677ff;
+}
+
+.sales-stats-page .sales-stats-range-link.is-active {
+  color: #1677ff;
+  font-weight: 700;
+}
+
+.sales-stats-page .sales-stats-range-dates {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+}
+
+.sales-stats-page .sales-stats-range-dates--editable .sales-stats-range-picker.ant-picker {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  width: 100%;
+}
+
+.sales-stats-page .sales-stats-range-dates--editable .sales-stats-range-picker.ant-picker .ant-picker-input > input {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.sales-stats-page .sales-stats-range-dates--custom {
+  border-color: rgba(22, 119, 255, 0.45);
+  background: #e8f1ff;
+}
+
+.sales-stats-page .sales-stats-range-dates--custom .sales-stats-range-picker.ant-picker .ant-picker-input > input {
+  color: #1677ff;
+}
+
 .sales-stats-page .sales-stats-today-card {
   border-radius: 18px;
   background: linear-gradient(135deg, #1677ff 0%, #4096ff 100%);

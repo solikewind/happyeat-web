@@ -33,7 +33,7 @@ type EntryAccent = 'blue' | 'violet' | 'amber' | 'emerald' | 'slate'
 interface QuickEntry {
   path: string
   title: string
-  description: string
+  description?: string
   icon: ReactNode
   accent: EntryAccent
   /** 与侧栏一致：新标签打开（如菜单大屏） */
@@ -71,7 +71,6 @@ const entryGroups: EntryGroup[] = [
       {
         path: '/sales-stats',
         title: '订单统计',
-        description: '今日/近7天营业额、订单量与菜品销量明细。',
         icon: <BarChartOutlined />,
         accent: 'violet',
         permission: 'stats:view',
@@ -98,7 +97,6 @@ const entryGroups: EntryGroup[] = [
       {
         path: '/menu',
         title: '菜单管理',
-        description: '分类、菜品与规格维护，决定前台展示与价格。',
         icon: <MenuOutlined />,
         accent: 'emerald',
       },
@@ -441,9 +439,11 @@ export default function Home() {
                       <Typography.Title level={5} className="home-entry-title">
                         {item.title}
                       </Typography.Title>
-                      <Typography.Paragraph type="secondary" className="home-entry-desc">
-                        {item.description}
-                      </Typography.Paragraph>
+                      {item.description ? (
+                        <Typography.Paragraph type="secondary" className="home-entry-desc">
+                          {item.description}
+                        </Typography.Paragraph>
+                      ) : null}
                       <span className="home-entry-cta">
                         {item.ctaLabel ?? '进入模块'} <ArrowRightOutlined />
                       </span>

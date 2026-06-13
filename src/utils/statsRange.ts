@@ -1,4 +1,4 @@
-export type StatsRangePreset = 'today' | '3d' | '7d' | '30d' | 'custom'
+export type StatsRangePreset = 'today' | 'yesterday' | '7d' | '30d' | 'custom'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -48,23 +48,27 @@ export function resolveStatsRange(preset: StatsRangePreset, custom?: [Date, Date
 
   const end = today
   let start = today
-  let label = '今日'
+  let label = '今天'
 
   switch (preset) {
-    case '3d':
-      start = startOfDay(new Date(today))
-      start.setDate(start.getDate() - 2)
-      label = '近 3 天'
-      break
+    case 'yesterday': {
+      const y = startOfDay(new Date(today))
+      y.setDate(y.getDate() - 1)
+      return {
+        start_date: formatStatsDate(y),
+        end_date: formatStatsDate(y),
+        label: '昨天',
+      }
+    }
     case '7d':
       start = startOfDay(new Date(today))
       start.setDate(start.getDate() - 6)
-      label = '近 7 天'
+      label = '近七天'
       break
     case '30d':
       start = startOfDay(new Date(today))
       start.setDate(start.getDate() - 29)
-      label = '近 30 天'
+      label = '30天'
       break
     default:
       break

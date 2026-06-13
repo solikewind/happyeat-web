@@ -29,7 +29,7 @@ type NavItemConfig = {
   key: string
   icon: React.ReactNode
   label: string
-  description: string
+  description?: string
   permission: PermissionKey
 }
 
@@ -60,10 +60,9 @@ const navItems: NavItemConfig[] = [
     key: '/sales-stats',
     icon: <BarChartOutlined />,
     label: '订单统计',
-    description: '营业额、订单量与菜品销量',
     permission: 'stats:view',
   },
-  { key: '/menu', icon: <MenuOutlined />, label: '菜单管理', description: '维护菜品与分类信息', permission: 'menu:view' },
+  { key: '/menu', icon: <MenuOutlined />, label: '菜单管理', permission: 'menu:view' },
   { key: '/tables', icon: <TableOutlined />, label: '餐桌管理', description: '查看桌台状态和容量', permission: 'table:view' },
   {
     key: '/table-map',
@@ -201,7 +200,9 @@ export default function MainLayout() {
               <Typography.Title level={3} className="app-page-title">
                 {currentPage.label}
               </Typography.Title>
-              <Typography.Text className="app-page-description">{currentPage.description}</Typography.Text>
+              {currentPage.description ? (
+                <Typography.Text className="app-page-description">{currentPage.description}</Typography.Text>
+              ) : null}
             </div>
             <Space size={10}>
               {isBreakpointBroken && (
