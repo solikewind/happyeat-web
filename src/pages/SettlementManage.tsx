@@ -83,6 +83,9 @@ export default function SettlementManage() {
   const [addOrderSubmitting, setAddOrderSubmitting] = useState(false)
   const [candidateOrders, setCandidateOrders] = useState<Order[]>([])
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
+  const [addOrderPage, setAddOrderPage] = useState(1)
+  const [addOrderTotal, setAddOrderTotal] = useState(0)
+  const [addOrderNoSearch, setAddOrderNoSearch] = useState('')
 
   const [settleOpen, setSettleOpen] = useState(false)
   const [settleForm] = Form.useForm()
@@ -150,27 +153,42 @@ export default function SettlementManage() {
     }
   }
 
+  const loadCandidateOrders = useCallback(
+    async (page: number, orderNo?: string) => {
+      if (!detail?.id) return
+      const settlementId = String(detail.id)
+      setAddOrderLoading(true)
+      try {
+        const res = await listOrders({
+          current: page,
+          pageSize: 10,
+          order_no: orderNo?.trim() || undefined,
+        })
+        const list = (Array.isArray(res.orders) ? res.orders : []).filter((o) => {
+          if (String(o.status || '').toLowerCase() === 'cancelled') return false
+          const sid = o.settlement_id ? String(o.settlement_id) : ''
+          if (sid && sid !== settlementId) return false
+          return true
+        })
+        setCandidateOrders(list)
+        setAddOrderTotal(Number(res.total) || 0)
+        setAddOrderPage(page)
+      } catch {
+        message.error('加载订单失败')
+      } finally {
+        setAddOrderLoading(false)
+      }
+    },
+    [detail?.id],
+  )
+
   const openAddOrder = async () => {
     if (!detail?.id || !canEdit) return
-    const settlementId = String(detail.id)
     setSelectedOrderIds([])
+    setAddOrderNoSearch('')
+    setAddOrderPage(1)
     setAddOrderOpen(true)
-    setAddOrderLoading(true)
-    try {
-      const res = await listOrders({ current: 1, pageSize: 500 })
-      const list = (Array.isArray(res.orders) ? res.orders : []).filter((o) => {
-        if (String(o.status || '').toLowerCase() === 'cancelled') return false
-        const sid = o.settlement_id ? String(o.settlement_id) : ''
-        if (sid && sid !== settlementId) return false
-        return true
-      })
-      setCandidateOrders(list)
-    } catch {
-      message.error('加载订单失败')
-      setAddOrderOpen(false)
-    } finally {
-      setAddOrderLoading(false)
-    }
+    await loadCandidateOrders(1)
   }
 
   const handleAddOrder = async () => {
@@ -333,7 +351,7 @@ export default function SettlementManage() {
 
   const orderColumns: ColumnsType<Order> = useMemo(() => {
     const cols: ColumnsType<Order> = [
-      { title: '订单号', dataIndex: 'order_no', ellipsis: true },
+      { title: '订单号', dataIndex: 'order_no', width: 168, ellipsis: true },
       {
         title: '类型',
         dataIndex: 'order_type',
@@ -513,15 +531,31 @@ export default function SettlementManage() {
         destroyOnClose
       >
         <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-          可多选；已取消订单不可加入；已在其他未结账结账单中的订单不会显示。可加入 {addableCandidateCount}{' '}
-          笔（列表共 {candidateOrders.length} 条）。
+          可多选；已取消订单不可加入；已在其他未结账结账单中的订单不会显示。本页可加入 {addableCandidateCount} 笔。
         </Typography.Paragraph>
+        <Input.Search
+          allowClear
+          placeholder="按订单号搜索"
+          value={addOrderNoSearch}
+          onChange={(e) => setAddOrderNoSearch(e.target.value)}
+          onSearch={(v) => {
+            setAddOrderNoSearch(v)
+            loadCandidateOrders(1, v)
+          }}
+          style={{ marginBottom: 12, maxWidth: 320 }}
+        />
         <Table
           rowKey={(record) => String(record.id)}
           size="small"
           loading={addOrderLoading}
           dataSource={candidateOrders}
-          pagination={{ pageSize: 8, showSizeChanger: false }}
+          pagination={{
+            current: addOrderPage,
+            pageSize: 10,
+            total: addOrderTotal,
+            showSizeChanger: false,
+            onChange: (p) => loadCandidateOrders(p, addOrderNoSearch),
+          }}
           locale={{ emptyText: '暂无可加入的订单' }}
           rowSelection={{
             type: 'checkbox',
@@ -532,7 +566,7 @@ export default function SettlementManage() {
             }),
           }}
           columns={[
-            { title: '订单号', dataIndex: 'order_no', ellipsis: true },
+            { title: '订单号', dataIndex: 'order_no', width: 168, ellipsis: true },
             {
               title: '桌号',
               dataIndex: 'table_code',

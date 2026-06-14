@@ -63,6 +63,7 @@ export async function listOrders(params?: {
   status?: string
   order_type?: string
   table_id?: string
+  order_no?: string
 }) {
   const query = params ? withApiStatus(params) : undefined
   const { data } = await api.get<{ orders: Order[]; total: number }>('/central/v1/orders', { params: query })
