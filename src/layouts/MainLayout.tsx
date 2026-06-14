@@ -17,6 +17,7 @@ import {
   SunOutlined,
   TableOutlined,
   UserOutlined,
+  WalletOutlined,
 } from '@ant-design/icons'
 import { useAuth } from '../contexts/AuthContext'
 import { OrderCartProvider } from '../contexts/OrderCartContext'
@@ -55,6 +56,13 @@ const navItems: NavItemConfig[] = [
     label: '订单管理',
     description: '订单查询与状态跟进',
     permission: 'orders:view',
+  },
+  {
+    key: '/settlements',
+    icon: <WalletOutlined />,
+    label: '结账单',
+    description: '多笔订单合并延后结账',
+    permission: 'settlements:view',
   },
   {
     key: '/sales-stats',

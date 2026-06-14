@@ -25,6 +25,7 @@ pnpm build
 ## 目录说明
 
 - `src/api/`：接口封装（client、types、auth）
+- `docs/`：设计说明（如 [权限矩阵](docs/permission-matrix.md)、[ID 约定](docs/id-conventions-and-settlement-notes.md)、[待优化清单](docs/TODO-optimizations.md)）
 - `src/contexts/`：全局状态（如 AuthContext）
 - `src/layouts/`：布局（侧栏 + 顶栏）
 - `src/pages/`：页面（登录、菜单、餐桌、订单、工作台）

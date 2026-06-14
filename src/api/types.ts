@@ -141,8 +141,24 @@ export interface Order {
   table_code?: string // 桌号（堂食时显示，外带为空）
   table_category?: string // 餐桌类别（如大厅、包间）
   remark?: string
+  settlement_id?: string
   items?: OrderItem[]
   /** 后端 RFC3339 UTC 字符串 */
   created_at?: string
   updated_at?: string
+}
+
+export interface Settlement {
+  id: string
+  customer_name: string
+  /** UNSETTLED=未结账 SETTLED=已结账 */
+  status: string
+  total_amount: number
+  actual_amount: number
+  remark?: string
+  order_count?: number
+  settled_at?: string
+  created_at?: string
+  updated_at?: string
+  orders?: Order[]
 }

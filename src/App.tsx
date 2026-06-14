@@ -24,6 +24,7 @@ const Workbench = lazy(() => import('./pages/Workbench'))
 const PermissionManage = lazy(() => import('./pages/PermissionManage'))
 const MenuBigScreen = lazy(() => import('./pages/MenuBigScreen'))
 const SalesStats = lazy(() => import('./pages/SalesStats'))
+const SettlementManage = lazy(() => import('./pages/SettlementManage'))
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAuth()
@@ -159,6 +160,14 @@ function AppRoutes() {
             element={
               <PermissionRoute permission="stats:view">
                 <SalesStats />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="settlements"
+            element={
+              <PermissionRoute permission="settlements:view">
+                <SettlementManage />
               </PermissionRoute>
             }
           />

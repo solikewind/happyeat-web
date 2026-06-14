@@ -15,21 +15,35 @@ export interface UpdateOrderItem {
   spec_info?: string
 }
 
+function normalizeOptionalId(value: unknown): string | undefined {
+  if (value == null || value === '' || value === 0 || value === '0') return undefined
+  const s = String(value).trim()
+  return s === '' || s === '0' ? undefined : s
+}
+
 function normalizeOrderItem(item: OrderItem): OrderItem {
   const raw = item as OrderItem & { menu_id?: string | number }
   return {
     ...item,
-    menu_id: raw.menu_id != null && String(raw.menu_id) !== '' ? String(raw.menu_id) : undefined,
+    menu_id: normalizeOptionalId(raw.menu_id),
   }
 }
 
 /** 统一为前端使用的小写状态，避免各处再做大写兼容 */
-function normalizeOrder(order: Order): Order {
+export function normalizeOrder(order: Order): Order {
+  const raw = order as Order & {
+    id?: string | number
+    table_id?: string | number
+    settlement_id?: string | number
+  }
   const s = normOrderStatus(order.status)
   return {
     ...order,
+    id: raw.id != null && String(raw.id) !== '' ? String(raw.id) : order.id,
     status: s || order.status,
     actual_amount: order.actual_amount ?? 0,
+    table_id: normalizeOptionalId(raw.table_id),
+    settlement_id: normalizeOptionalId(raw.settlement_id),
     items: Array.isArray(order.items) ? order.items.map(normalizeOrderItem) : order.items,
   }
 }

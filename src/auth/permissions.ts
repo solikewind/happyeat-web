@@ -175,6 +175,34 @@ export const PERMISSION_DEFINITIONS: Record<string, PermissionDefinition> = {
       { method: 'GET', path: '/central/v1/stats/menus' },
     ],
   },
+  'settlements:view': {
+    key: 'settlements:view',
+    module: 'settlements',
+    label: '查看结账单',
+    scene: '结账单列表与详情',
+    apis: [
+      { method: 'GET', path: '/central/v1/settlements' },
+      { method: 'GET', path: '/central/v1/settlement/:id' },
+    ],
+  },
+  'settlements:edit': {
+    key: 'settlements:edit',
+    module: 'settlements',
+    label: '管理结账单',
+    scene: '创建结账单、添加/移除订单',
+    apis: [
+      { method: 'POST', path: '/central/v1/settlements' },
+      { method: 'POST', path: '/central/v1/settlement/:id/orders' },
+      { method: 'DELETE', path: '/central/v1/settlement/:id/orders/:order_id' },
+    ],
+  },
+  'settlements:settle': {
+    key: 'settlements:settle',
+    module: 'settlements',
+    label: '结账单结账',
+    scene: '未结账结账单确认收款',
+    apis: [{ method: 'POST', path: '/central/v1/settlement/:id/settle' }],
+  },
 }
 
 const MODULE_LABELS: Record<string, string> = {
@@ -187,6 +215,7 @@ const MODULE_LABELS: Record<string, string> = {
   table: '餐桌',
   spec: '规格',
   stats: '订单统计',
+  settlements: '结账单',
 }
 
 export function permissionModuleLabel(module: string): string {
@@ -212,6 +241,9 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     'order_desk:create',
     'stats:view',
     'spec:view',
+    'settlements:view',
+    'settlements:edit',
+    'settlements:settle',
   ],
   kitchen: [
     'home:view',
