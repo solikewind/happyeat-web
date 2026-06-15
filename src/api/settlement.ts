@@ -74,17 +74,19 @@ export async function addSettlementOrder(settlementId: string, orderId: string) 
 export async function addSettlementOrdersSequential(
   settlementId: string,
   orderIds: string[],
-): Promise<{ addedCount: number }> {
+): Promise<{ addedCount: number; settlement?: Settlement }> {
   let addedCount = 0
+  let settlement: Settlement | undefined
   for (const orderId of orderIds) {
     try {
-      await addSettlementOrder(settlementId, orderId)
+      const res = await addSettlementOrder(settlementId, orderId)
+      settlement = res.settlement
       addedCount++
     } catch (err) {
-      throw Object.assign(err instanceof Error ? err : new Error('加入订单失败'), { addedCount })
+      throw Object.assign(err instanceof Error ? err : new Error('加入订单失败'), { addedCount, settlement })
     }
   }
-  return { addedCount }
+  return { addedCount, settlement }
 }
 
 export async function removeSettlementOrder(settlementId: string, orderId: string) {

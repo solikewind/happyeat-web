@@ -30,6 +30,7 @@ import {
   orderStatusLabel,
   orderStatusTagColor,
 } from '../utils/orderStatus'
+import { formatDateTime } from '../utils/datetime'
 
 function renderManageModalTitle(title: string, description: string) {
   return (
@@ -395,7 +396,7 @@ export default function OrderManage() {
               title: '创建时间',
               dataIndex: 'created_at',
               width: 172,
-              render: (value: string | undefined) => (value ? new Date(value).toLocaleString('zh-CN') : '-'),
+              render: (value: string | undefined) => formatDateTime(value),
             },
             {
               title: '备注',
@@ -648,7 +649,7 @@ export default function OrderManage() {
                 <Tag color={orderStatusTagColor(detailOrder.status)}>{orderStatusLabel(detailOrder.status)}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label="创建时间">
-                {detailOrder.created_at ? new Date(detailOrder.created_at).toLocaleString('zh-CN') : '-'}
+                {formatDateTime(detailOrder.created_at)}
               </Descriptions.Item>
               <Descriptions.Item label="桌台">
                 {detailOrder.table_code ? `${detailOrder.table_category ? `${detailOrder.table_category}-` : ''}${detailOrder.table_code}` : '-'}

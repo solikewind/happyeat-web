@@ -58,17 +58,17 @@ const navItems: NavItemConfig[] = [
     permission: 'orders:view',
   },
   {
+    key: '/sales-stats',
+    icon: <BarChartOutlined />,
+    label: '订单统计',
+    permission: 'stats:view',
+  },
+  {
     key: '/settlements',
     icon: <WalletOutlined />,
     label: '结账单',
     description: '多笔订单合并延后结账',
     permission: 'settlements:view',
-  },
-  {
-    key: '/sales-stats',
-    icon: <BarChartOutlined />,
-    label: '订单统计',
-    permission: 'stats:view',
   },
   { key: '/menu', icon: <MenuOutlined />, label: '菜单管理', permission: 'menu:view' },
   { key: '/tables', icon: <TableOutlined />, label: '餐桌管理', description: '查看桌台状态和容量', permission: 'table:view' },

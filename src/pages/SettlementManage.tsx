@@ -30,6 +30,7 @@ import {
 } from '../api/settlement'
 import { useAuth } from '../contexts/AuthContext'
 import { ORDER_TYPE_LABEL, orderStatusLabel, orderStatusTagColor } from '../utils/orderStatus'
+import { formatDateTime } from '../utils/datetime'
 import { formatYuan } from '../utils/statsRange'
 
 function renderManageModalTitle(title: string, description: string) {
@@ -50,13 +51,6 @@ function settlementStatusLabel(status: string) {
 
 function settlementStatusColor(status: string) {
   return String(status || '').toUpperCase() === 'SETTLED' ? 'green' : 'orange'
-}
-
-function formatTime(value?: string) {
-  if (!value) return '-'
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return value
-  return d.toLocaleString('zh-CN', { hour12: false })
 }
 
 export default function SettlementManage() {
@@ -83,8 +77,6 @@ export default function SettlementManage() {
   const [addOrderSubmitting, setAddOrderSubmitting] = useState(false)
   const [candidateOrders, setCandidateOrders] = useState<Order[]>([])
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
-  const [addOrderPage, setAddOrderPage] = useState(1)
-  const [addOrderTotal, setAddOrderTotal] = useState(0)
   const [addOrderNoSearch, setAddOrderNoSearch] = useState('')
 
   const [settleOpen, setSettleOpen] = useState(false)
@@ -154,13 +146,13 @@ export default function SettlementManage() {
   }
 
   const loadCandidateOrders = useCallback(
-    async (page: number, orderNo?: string) => {
+    async (orderNo?: string) => {
       if (!detail?.id) return
       const settlementId = String(detail.id)
       setAddOrderLoading(true)
       try {
         const res = await listOrders({
-          current: page,
+          current: 1,
           pageSize: 10,
           order_no: orderNo?.trim() || undefined,
         })
@@ -171,8 +163,6 @@ export default function SettlementManage() {
           return true
         })
         setCandidateOrders(list)
-        setAddOrderTotal(Number(res.total) || 0)
-        setAddOrderPage(page)
       } catch {
         message.error('加载订单失败')
       } finally {
@@ -186,9 +176,8 @@ export default function SettlementManage() {
     if (!detail?.id || !canEdit) return
     setSelectedOrderIds([])
     setAddOrderNoSearch('')
-    setAddOrderPage(1)
     setAddOrderOpen(true)
-    await loadCandidateOrders(1)
+    await loadCandidateOrders()
   }
 
   const handleAddOrder = async () => {
@@ -201,19 +190,28 @@ export default function SettlementManage() {
     try {
       const result = await addSettlementOrdersSequential(detail.id, selectedOrderIds)
       addedCount = result.addedCount
-      const { settlement } = await getSettlement(detail.id)
-      setDetail(settlement)
+      if (result.settlement) {
+        setDetail(result.settlement)
+      } else {
+        const { settlement } = await getSettlement(detail.id)
+        setDetail(settlement)
+      }
       message.success(`已加入 ${addedCount} 笔订单`)
       setAddOrderOpen(false)
-      loadList()
+      await loadList()
     } catch (err) {
       if (err && typeof err === 'object' && 'addedCount' in err && typeof err.addedCount === 'number') {
         addedCount = err.addedCount
       }
       try {
-        const { settlement } = await getSettlement(detail.id)
-        setDetail(settlement)
-        loadList()
+        const errObj = err as { settlement?: Settlement; addedCount?: number }
+        if (errObj.settlement) {
+          setDetail(errObj.settlement)
+        } else {
+          const { settlement } = await getSettlement(detail.id)
+          setDetail(settlement)
+        }
+        await loadList()
       } catch {
         // ignore refresh failure
       }
@@ -316,7 +314,7 @@ export default function SettlementManage() {
       title: '创建时间',
       dataIndex: 'created_at',
       width: 168,
-      render: (v: string) => formatTime(v),
+      render: (v: string) => formatDateTime(v),
     },
     {
       title: '操作',
@@ -368,7 +366,7 @@ export default function SettlementManage() {
         ),
       },
       { title: '金额', dataIndex: 'total_amount', width: 100, render: (v: number) => formatYuan(v) },
-      { title: '下单时间', dataIndex: 'created_at', width: 168, render: (v: string) => formatTime(v) },
+      { title: '下单时间', dataIndex: 'created_at', width: 168, render: (v: string) => formatDateTime(v) },
     ]
     if (isUnsettled && canEdit) {
       cols.push({
@@ -499,8 +497,8 @@ export default function SettlementManage() {
               <Descriptions.Item label="实收">
                 {String(detail.status).toUpperCase() === 'SETTLED' ? formatYuan(detail.actual_amount) : '-'}
               </Descriptions.Item>
-              <Descriptions.Item label="创建时间">{formatTime(detail.created_at)}</Descriptions.Item>
-              <Descriptions.Item label="结账时间">{formatTime(detail.settled_at)}</Descriptions.Item>
+              <Descriptions.Item label="创建时间">{formatDateTime(detail.created_at)}</Descriptions.Item>
+              <Descriptions.Item label="结账时间">{formatDateTime(detail.settled_at)}</Descriptions.Item>
               {detail.remark ? (
                 <Descriptions.Item label="备注" span={2}>
                   {detail.remark}
@@ -531,7 +529,8 @@ export default function SettlementManage() {
         destroyOnClose
       >
         <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-          可多选；已取消订单不可加入；已在其他未结账结账单中的订单不会显示。本页可加入 {addableCandidateCount} 笔。
+          默认展示最近 10 笔可加入订单，可按订单号搜索；已取消或已在其他结账单中的订单不会显示。本页可加入{' '}
+          {addableCandidateCount} 笔。
         </Typography.Paragraph>
         <Input.Search
           allowClear
@@ -540,7 +539,7 @@ export default function SettlementManage() {
           onChange={(e) => setAddOrderNoSearch(e.target.value)}
           onSearch={(v) => {
             setAddOrderNoSearch(v)
-            loadCandidateOrders(1, v)
+            loadCandidateOrders(v)
           }}
           style={{ marginBottom: 12, maxWidth: 320 }}
         />
@@ -549,13 +548,7 @@ export default function SettlementManage() {
           size="small"
           loading={addOrderLoading}
           dataSource={candidateOrders}
-          pagination={{
-            current: addOrderPage,
-            pageSize: 10,
-            total: addOrderTotal,
-            showSizeChanger: false,
-            onChange: (p) => loadCandidateOrders(p, addOrderNoSearch),
-          }}
+          pagination={false}
           locale={{ emptyText: '暂无可加入的订单' }}
           rowSelection={{
             type: 'checkbox',

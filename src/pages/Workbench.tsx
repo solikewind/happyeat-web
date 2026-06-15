@@ -40,6 +40,7 @@ import {
   workbenchAdvanceStatus,
   WORKBENCH_STATUS_HINT,
 } from '../utils/orderStatus'
+import { formatDateTime } from '../utils/datetime'
 
 const asText = (value: unknown, fallback = '-') => {
   if (typeof value === 'string') return value
@@ -342,12 +343,7 @@ export default function Workbench() {
                       <div className="workbench-meta-chip">
                         <ClockCircleOutlined />
                         <span>
-                          {order.created_at
-                            ? new Date(order.created_at).toLocaleTimeString('zh-CN', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : '--:--'}
+                          {order.created_at ? formatDateTime(order.created_at) : '-'}
                         </span>
                       </div>
                       <span
