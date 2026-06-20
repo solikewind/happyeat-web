@@ -36,26 +36,42 @@ export function sortOrderItemsForDisplay(
     return menuByName.get(item.menu_name)
   }
 
-  return items
-    .map((item, index) => ({ item, index }))
+  const rankedItems = items.map((item, index) => {
+    const menu = resolveMenu(item)
+    const category = menu ? catById.get(menu.category_id) : undefined
+    return {
+      item,
+      index,
+      kind: categoryKindRank(category),
+      categorySort: category?.sort ?? 0,
+      menuSort: menu?.sort ?? 0,
+      groupName: (menu?.name || item.menu_name || '').trim(),
+      groupRank: 0,
+    }
+  })
+
+  const baseSorted = [...rankedItems].sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind - b.kind
+    if (a.categorySort !== b.categorySort) return a.categorySort - b.categorySort
+    if (a.menuSort !== b.menuSort) return a.menuSort - b.menuSort
+    return a.index - b.index
+  })
+  const groupRankByName = new Map<string, number>()
+  baseSorted.forEach((entry, rank) => {
+    const groupKey = `${entry.kind}|${entry.categorySort}|${entry.groupName}`
+    if (!groupRankByName.has(groupKey)) groupRankByName.set(groupKey, rank)
+  })
+
+  return rankedItems
+    .map((entry) => ({
+      ...entry,
+      groupRank: groupRankByName.get(`${entry.kind}|${entry.categorySort}|${entry.groupName}`) ?? entry.index,
+    }))
     .sort((a, b) => {
-      const menuA = resolveMenu(a.item)
-      const menuB = resolveMenu(b.item)
-      const catA = menuA ? catById.get(menuA.category_id) : undefined
-      const catB = menuB ? catById.get(menuB.category_id) : undefined
-
-      const kindA = categoryKindRank(catA)
-      const kindB = categoryKindRank(catB)
-      if (kindA !== kindB) return kindA - kindB
-
-      const catSortA = catA?.sort ?? 0
-      const catSortB = catB?.sort ?? 0
-      if (catSortA !== catSortB) return catSortA - catSortB
-
-      const menuSortA = menuA?.sort ?? 0
-      const menuSortB = menuB?.sort ?? 0
-      if (menuSortA !== menuSortB) return menuSortA - menuSortB
-
+      if (a.kind !== b.kind) return a.kind - b.kind
+      if (a.categorySort !== b.categorySort) return a.categorySort - b.categorySort
+      if (a.groupRank !== b.groupRank) return a.groupRank - b.groupRank
+      if (a.menuSort !== b.menuSort) return a.menuSort - b.menuSort
       return a.index - b.index
     })
     .map(({ item }) => item)

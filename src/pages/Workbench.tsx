@@ -41,6 +41,7 @@ import {
   WORKBENCH_STATUS_HINT,
 } from '../utils/orderStatus'
 import { formatDateTime } from '../utils/datetime'
+import { dismissSoftKeyboard } from '../utils/focus'
 
 const asText = (value: unknown, fallback = '-') => {
   if (typeof value === 'string') return value
@@ -50,7 +51,6 @@ const asText = (value: unknown, fallback = '-') => {
 
 const asNumber = (value: unknown) => (typeof value === 'number' ? value : Number(value) || 0)
 const WORKBENCH_PAGE_SIZE = 5
-const WORKBENCH_ITEMS_PREVIEW_COUNT = 5
 
 export default function Workbench() {
   const { can } = useAuth()
@@ -62,7 +62,6 @@ export default function Workbench() {
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
-  const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set())
   const [editOpen, setEditOpen] = useState(false)
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null)
   const [menus, setMenus] = useState<Menu[]>([])
@@ -89,6 +88,7 @@ export default function Workbench() {
 
   useEffect(() => {
     load()
+    return dismissSoftKeyboard
   }, [load])
 
   useEffect(() => {
@@ -107,6 +107,7 @@ export default function Workbench() {
   }, [])
 
   const handleAdvance = async (id: string, next: 'preparing' | 'completed') => {
+    dismissSoftKeyboard()
     if (!canComplete) {
       message.warning('当前账号没有出单权限')
       return
@@ -114,6 +115,7 @@ export default function Workbench() {
     try {
       await updateOrderStatus(id, next)
       message.success(next === 'preparing' ? '已开始制作' : '订单已标记为完成')
+      dismissSoftKeyboard()
       load()
     } catch {
       message.error(
@@ -138,24 +140,13 @@ export default function Workbench() {
     }
   }
 
-  const toggleOrderItems = (orderId: string) => {
-    setExpandedOrderIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(orderId)) {
-        next.delete(orderId)
-      } else {
-        next.add(orderId)
-      }
-      return next
-    })
-  }
-
   const sortedOrders = useMemo(
     () => [...orders].sort((a, b) => compareWorkbenchOrderStatus(a.status, b.status)),
     [orders],
   )
 
   const openEdit = async (order: Order) => {
+    dismissSoftKeyboard()
     if (!canEditOrder) {
       message.warning('当前账号没有编辑订单权限')
       return
@@ -202,6 +193,7 @@ export default function Workbench() {
   }
 
   const handleEditOk = async () => {
+    dismissSoftKeyboard()
     if (!canEditOrder) return
     if (!editingOrderId) return
     const values = await editForm.validateFields()
@@ -223,6 +215,7 @@ export default function Workbench() {
       })
       message.success('订单已更新')
       setEditOpen(false)
+      dismissSoftKeyboard()
       load()
     } catch {
       message.error('更新订单失败')
@@ -364,13 +357,10 @@ export default function Workbench() {
                           menus,
                           categories,
                         )
-                        const isExpanded = expandedOrderIds.has(order.id)
-                        const visibleItems = isExpanded ? items : items.slice(0, WORKBENCH_ITEMS_PREVIEW_COUNT)
-                        const hiddenCount = Math.max(0, items.length - visibleItems.length)
 
                         return (
                           <>
-                            {visibleItems.map((item, index) => (
+                            {items.map((item, index) => (
                               <div
                                 key={`${order.id}-${asText(item.menu_name, 'item')}-${index}`}
                                 className="workbench-order-item"
@@ -387,11 +377,6 @@ export default function Workbench() {
                                 </div>
                               </div>
                             ))}
-                            {items.length > WORKBENCH_ITEMS_PREVIEW_COUNT && (
-                              <Button type="link" className="workbench-items-toggle" onClick={() => toggleOrderItems(order.id)}>
-                                {isExpanded ? '收起菜品' : `还有 ${hiddenCount} 项，点击展开`}
-                              </Button>
-                            )}
                           </>
                         )
                       })()}
@@ -471,7 +456,10 @@ export default function Workbench() {
           title="编辑订单"
           open={editOpen}
           onOk={handleEditOk}
-          onCancel={() => setEditOpen(false)}
+          onCancel={() => {
+            dismissSoftKeyboard()
+            setEditOpen(false)
+          }}
           okText="保存"
           cancelText="取消"
           okButtonProps={{ disabled: !canEditOrder }}

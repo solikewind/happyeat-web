@@ -2,6 +2,16 @@
 
 与 HappyEat 后端配套的 React 前端，技术栈：Vite + React 18 + TypeScript + Ant Design + React Router + Axios。
 
+## 功能范围
+
+- 登录与权限控制
+- 首页经营概览
+- 点餐台、工作台、订单管理
+- 菜单、规格、餐桌管理
+- 结账单管理
+- 销售统计
+- 菜单大屏
+
 ## 开发
 
 ```bash
@@ -12,7 +22,11 @@ pnpm install
 pnpm dev
 ```
 
-请先启动后端服务（如 `localhost:8888`），并在 `.env.development` 中配置 `VITE_API_BASE`。
+请先启动后端服务（默认 `http://localhost:8888`），并在 `.env.development` 中配置：
+
+```env
+VITE_API_BASE=http://localhost:8888/central/v1
+```
 
 ## 构建
 
@@ -31,3 +45,8 @@ pnpm build
 - `src/pages/`：页面（登录、菜单、餐桌、订单、工作台）
 
 接口约定以项目根目录的 `happyeat.json`（Swagger）为准，后端变更后请同步该文件。
+
+## 配套项目
+
+- 后端服务：`../happyeat`
+- 移动端 App：`../happyeat-app`

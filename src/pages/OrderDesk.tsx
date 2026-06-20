@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Card, Empty, Form, Input, InputNumber, Popconfirm, Popover, Radio, Space, Statistic, Tabs, Tag, Typography, message } from 'antd'
 import { PlusOutlined, MinusOutlined, AudioOutlined, SearchOutlined, SoundOutlined } from '@ant-design/icons'
 import type { Menu, MenuCategory, MenuSpec, Table as TableType } from '../api/types'
@@ -11,6 +11,7 @@ import { sortMenuCategoriesForDisplay, sortMenusForDisplay } from '../utils/menu
 import { matchMenuByText, parseOrderItems } from '../utils/menuMatcher'
 import { useOrderCart } from '../contexts/OrderCartContext'
 import { useAuth } from '../contexts/AuthContext'
+import { dismissSoftKeyboard } from '../utils/focus'
 
 function defaultSpecs(specs: MenuSpec[]): MenuSpec[] {
   const byType = new Map<string, MenuSpec>()
@@ -45,6 +46,7 @@ export default function OrderDesk() {
   /** 实收（元），默认随购物车合计变化；可改价/抹零时在此修改 */
   const [actualAmountYuan, setActualAmountYuan] = useState<number>(0)
   const [objectUrlOverrides, setObjectUrlOverrides] = useState<Record<string, string>>({})
+  const pendingSearchClearScrollRef = useRef<{ left: number; top: number } | null>(null)
 
   const refreshObjectUrl = useCallback(async (objectId?: string) => {
     const id = objectId?.trim()
@@ -127,6 +129,7 @@ export default function OrderDesk() {
   useEffect(() => {
     loadCategories()
     loadTables()
+    return dismissSoftKeyboard
   }, [loadCategories, loadTables])
 
   useEffect(() => {
@@ -138,6 +141,14 @@ export default function OrderDesk() {
       loadTables()
     }
   }, [orderType, loadTables])
+
+  useLayoutEffect(() => {
+    const scrollPosition = pendingSearchClearScrollRef.current
+    if (!scrollPosition || menuSearchKeyword) return
+
+    window.scrollTo(scrollPosition.left, scrollPosition.top)
+    pendingSearchClearScrollRef.current = null
+  }, [menuSearchKeyword])
 
   const getSelection = useCallback(
     (menu: Menu) => {
@@ -198,6 +209,7 @@ export default function OrderDesk() {
     }
 
     if (menuSearchKeyword.trim()) {
+      pendingSearchClearScrollRef.current = { left: window.scrollX, top: window.scrollY }
       setMenuSearchKeyword('')
     }
   }
@@ -305,6 +317,7 @@ export default function OrderDesk() {
   }
 
   const handleSubmit = async () => {
+    dismissSoftKeyboard()
     if (!canCreateFromDesk) {
       message.warning('当前账号没有点餐台下单权限')
       return
@@ -341,6 +354,7 @@ export default function OrderDesk() {
       })
       message.success('下单成功')
       clearCart()
+      dismissSoftKeyboard()
     } catch {
       message.error('下单失败')
     } finally {
@@ -691,6 +705,7 @@ export default function OrderDesk() {
                 type="primary"
                 size="large"
                 block
+                onClick={dismissSoftKeyboard}
                 loading={submitting}
                 disabled={cart.length === 0 || !canCreateFromDesk}
               >
