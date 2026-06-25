@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Card, Empty, Form, Input, InputNumber, Popconfirm, Popover, Radio, Space, Statistic, Tabs, Tag, Typography, message } from 'antd'
 import { PlusOutlined, MinusOutlined, AudioOutlined, SearchOutlined, SoundOutlined } from '@ant-design/icons'
 import type { Menu, MenuCategory, MenuSpec, Table as TableType } from '../api/types'
@@ -46,7 +46,6 @@ export default function OrderDesk() {
   /** 实收（元），默认随购物车合计变化；可改价/抹零时在此修改 */
   const [actualAmountYuan, setActualAmountYuan] = useState<number>(0)
   const [objectUrlOverrides, setObjectUrlOverrides] = useState<Record<string, string>>({})
-  const pendingSearchClearScrollRef = useRef<{ left: number; top: number } | null>(null)
 
   const refreshObjectUrl = useCallback(async (objectId?: string) => {
     const id = objectId?.trim()
@@ -142,14 +141,6 @@ export default function OrderDesk() {
     }
   }, [orderType, loadTables])
 
-  useLayoutEffect(() => {
-    const scrollPosition = pendingSearchClearScrollRef.current
-    if (!scrollPosition || menuSearchKeyword) return
-
-    window.scrollTo(scrollPosition.left, scrollPosition.top)
-    pendingSearchClearScrollRef.current = null
-  }, [menuSearchKeyword])
-
   const getSelection = useCallback(
     (menu: Menu) => {
       const raw = cardSelections[menu.id]
@@ -209,8 +200,10 @@ export default function OrderDesk() {
     }
 
     if (menuSearchKeyword.trim()) {
-      pendingSearchClearScrollRef.current = { left: window.scrollX, top: window.scrollY }
       setMenuSearchKeyword('')
+      requestAnimationFrame(() => {
+        window.scrollTo({ left: 0, top: 0, behavior: 'smooth' })
+      })
     }
   }
 

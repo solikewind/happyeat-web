@@ -1,5 +1,5 @@
 import { useState, type SetStateAction } from 'react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Avatar, Breadcrumb, Button, Drawer, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
 import {
   BarChartOutlined,
@@ -127,6 +127,7 @@ function renderNavItemLabel(
 
 export default function MainLayout() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { logout, role, can } = useAuth()
   const { isDark, toggleTheme } = useThemeMode()
   const [collapsed, setCollapsed] = useState(false)
@@ -145,6 +146,11 @@ export default function MainLayout() {
         onClick: logout,
       },
     ],
+  }
+
+  const handleNavClick = (key: string, onMobileClose?: () => void) => {
+    navigate(key)
+    onMobileClose?.()
   }
 
   return (
@@ -180,6 +186,7 @@ export default function MainLayout() {
             selectedKeys={[selectedKey]}
             mode="inline"
             inlineCollapsed={collapsed}
+            onClick={({ key }) => handleNavClick(key)}
             items={visibleNavItems.map((item) => ({
               key: item.key,
               icon: item.icon,
@@ -246,6 +253,7 @@ export default function MainLayout() {
               theme="light"
               selectedKeys={[selectedKey]}
               mode="inline"
+              onClick={({ key }) => handleNavClick(key, () => setMobileNavOpen(false))}
               items={visibleNavItems.map((item) => ({
                 key: item.key,
                 icon: item.icon,
